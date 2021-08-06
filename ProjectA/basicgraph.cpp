@@ -33,7 +33,7 @@ void main(){\
   vec4 rotatedPosition = vec4( position.xyz, 1.0f ) * xRMatrix * yRMatrix;\
   vec4 cameraPos = rotatedPosition + vec4(offset.x, offset.y, offset.z, 0.0);\
   gl_Position = perspective * cameraPos;\
-  theColor = mix( vec4( color.x, color.y, color.z, color.w ), vec4( 0.0f, color.y, color.z, color.w ), position.y / 10 );\
+  theColor = mix( vec4( color.x, color.y, color.z, color.w ), vec4( 0.0f, color.y, color.z, color.w ), position.y / 50 );\
 }";
 
 //fragment shader
@@ -76,6 +76,7 @@ float ypos = 0;
 float zpos = -40;
 float xang = 0;
 float yang = 0;
+double fov = 90;
 
 //do we draw 2d, 3d?
 int draw_2d = 1;
@@ -110,6 +111,8 @@ MessageCallback(GLenum source,
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+
+void perspective(double fov);
 
 void init() {
 	glfwInit();
@@ -155,35 +158,7 @@ void init() {
 	uniform_perspective = glGetUniformLocation(program, "perspective");
 
 	//setup perspective
-	float fFrustumScale = 1.0f;
-	float fzNear = 1.0f;
-	float fzFar = 100.0f;
-	//THE MATRIX
-	float theMatrix[16];
-	memset(theMatrix, 0, sizeof(float) * 16);
-	//build perspective matrix
-	theMatrix[0] = fFrustumScale;
-	theMatrix[5] = fFrustumScale;
-	theMatrix[10] = (fzFar + fzNear) / (fzNear - fzFar);
-	theMatrix[14] = (2 * fzFar * fzNear) / (fzNear - fzFar);
-	theMatrix[11] = -1.0f;
-
-	/* transpose this
-	vector<vector<float>> perspectiveMat = {
-	  {fFrustumScale,   0,              0, 0},
-	  {0,               fFrustumScale,  0, 0},
-	  {0,               0,              (fzFar + fzNear) / (fzNear - fzFar), (2 * fzFar * fzNear) / (fzNear - fzFar)},
-	  {0,               0,              -1,, 0}
-	  };
-	*/
-
-	//bind data to shader
-	glUseProgram(program);
-	glUniformMatrix4fv(uniform_perspective, 1, GL_TRUE, theMatrix); //perspective matrix
-	glUniform3f(uniform_offset, xpos, ypos, zpos); //position offset
-	glUniform2f(uniform_angle, xang, yang); //rotation angles
-	glUniform4f(uniform_color, 1, 1, 1, 1); //color
-	glUseProgram(0);
+	perspective(fov);
 
 	//axis lines, per side
 	//x
@@ -259,6 +234,40 @@ void init() {
 	glBindBuffer(GL_ARRAY_BUFFER, buffer_axis_marks);
 	//assign axis_marks data
 	glBufferData(GL_ARRAY_BUFFER, sizeof(axis_marks), axis_marks, GL_STATIC_DRAW);
+}
+
+void perspective(double fov)
+{
+	//setup perspective
+	float fzNear = 1.0f;
+	float fzFar = 100.0f;
+	//THE MATRIX
+	float theMatrix[16];
+	memset(theMatrix, 0, sizeof(float) * 16);
+	//build perspective matrix
+	float fFrustumScale = 1 / tan((fov / 2) * (3.141 / 180));
+	theMatrix[0] = fFrustumScale;
+	theMatrix[5] = fFrustumScale;
+	theMatrix[10] = (fzFar + fzNear) / (fzNear - fzFar);
+	theMatrix[14] = (2 * fzFar * fzNear) / (fzNear - fzFar);
+	theMatrix[11] = -1.0f;
+
+	/* transpose this?
+	vector<vector<float>> perspectiveMat = {
+	  {fFrustumScale,   0,              0, 0},
+	  {0,               fFrustumScale,  0, 0},
+	  {0,               0,              (fzFar + fzNear) / (fzNear - fzFar), (2 * fzFar * fzNear) / (fzNear - fzFar)},
+	  {0,               0,              -1,, 0}
+	  };
+	*/
+
+	//bind data to shader
+	glUseProgram(program);
+	glUniformMatrix4fv(uniform_perspective, 1, GL_TRUE, theMatrix); //perspective matrix
+	glUniform3f(uniform_offset, xpos, ypos, zpos); //position offset
+	glUniform2f(uniform_angle, xang, yang); //rotation angles
+	glUniform4f(uniform_color, 1, 1, 1, 1); //color
+	glUseProgram(0);
 }
 
 //generate graph data function
@@ -451,6 +460,14 @@ void keyboard() {
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
 		yang = yang + 0.025;
 	}
+	if (glfwGetKey(window, 'P') == GLFW_PRESS && fov < 180) {
+		fov += 0.2;
+		perspective(fov);
+	}
+	if (glfwGetKey(window, 'O') == GLFW_PRESS && fov > 30) {
+		fov -= 0.2;
+		perspective(fov);
+	}
 }
 
 
@@ -503,7 +520,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         } else if( key == '0' ) {
             draw_3d = 0;
             draw_2d = 0;
-        }
+		}
 	}
 }
 
