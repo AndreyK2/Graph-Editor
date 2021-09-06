@@ -1,8 +1,15 @@
+// opengl wrangler
 #include <glew.h>
+// window handling backend
 #include <glfw3.h>
-//#include <gl/GL.h>
+// imgui
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include <vector>
 #include <iostream>
+
+
 
 using std::vector;
 
@@ -92,8 +99,13 @@ struct position {
 //axis
 struct position axis[6];
 struct position axis_marks[600];
-//to stop cc complaining
 
+//Callbacks
+
+static void glfw_error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
 
 void GLAPIENTRY
 MessageCallback(GLenum source,
@@ -116,13 +128,16 @@ void perspective(double fov);
 
 void init() {
 	glfwInit();
+	glfwSetErrorCallback(glfw_error_callback);
 
+	const char* glsl_version = "#version 150";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	window = glfwCreateWindow(1000, 800, "Graph", WINDOWED, NULL);
+	glfwSwapInterval(1); // Enable Vsync
 
 	glfwMakeContextCurrent(window);
 	glfwSetKeyCallback(window, key_callback);
@@ -132,6 +147,16 @@ void init() {
 
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(MessageCallback, 0);
+
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	//compile vertex shader
 	GLuint v_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -540,6 +565,8 @@ int main(int argc, char const* argv[])
 	//generate + buffer graph data
 	generate();
 
+	bool show_demo_window = true; // DELETE
+
 	//main loop
 	//while window open + not escape key
 	while (!glfwGetKey(window, GLFW_KEY_ESCAPE) && !glfwWindowShouldClose(window)) {
@@ -549,13 +576,27 @@ int main(int argc, char const* argv[])
 		//draw
 		draw();
 
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		if (show_demo_window)
+			ImGui::ShowDemoWindow(&show_demo_window);
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		//keyboard
 		keyboard();
 	} //end of loop
 
+	// Cleanup
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 	//end
+	glfwDestroyWindow(window);
 	glfwTerminate();
-
 }

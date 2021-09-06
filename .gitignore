@@ -341,3 +341,4 @@ healthchecksdb
 /ProjectA.sln
 /ProjectA/ProjectA.vcxproj.filters
 /ProjectA/ProjectA.vcxproj
+/ProjectA/imgui.ini
