@@ -6,10 +6,11 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+// self implements
+#include "Console.h"
+
 #include <vector>
 #include <iostream>
-
-
 
 using std::vector;
 
@@ -565,7 +566,10 @@ int main(int argc, char const* argv[])
 	//generate + buffer graph data
 	generate();
 
-	bool show_demo_window = true; // DELETE
+	Console console;
+	bool show_console = true;
+
+	bool show_demo_window = false; // DELETE
 
 	//main loop
 	//while window open + not escape key
@@ -583,13 +587,16 @@ int main(int argc, char const* argv[])
 
 		if (show_demo_window)
 			ImGui::ShowDemoWindow(&show_demo_window);
+		if (show_console)
+			console.Draw(&show_console);
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		//keyboard
-		keyboard();
+		if(!console.IsFocused())
+			keyboard();
 	} //end of loop
 
 	// Cleanup
