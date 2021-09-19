@@ -302,8 +302,7 @@ void generate() {
 	unsigned int estimatedPolys3D = pow(graph_samples * 2, 2);
 	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
 	position* graph_3d_2 = (position*)malloc(estimatedPolys3D * sizeof(position));
-	//struct position graph_3d_1[estimatedPolys];
-	//struct position graph_3d_2[estimatedPolys];
+
 	//2d graph
 	unsigned int estimatedPolys2D = graph_samples * 2;
 	position* graph_2d = (position*)malloc(estimatedPolys2D * sizeof(position));
