@@ -27,12 +27,7 @@ EquationNode* GenerateEquationTree(string equation, double& x, double& y)
 
 	// equation pre-processing
 
-	pos = equation.find_first_not_of(' ');
-	if (pos == equation.npos)
-	{
-		throw EquationError("Invalid Argument: Empty/incomplete argument");
-	}
-	equation = equation.substr(pos, equation.find_last_not_of(' '));
+	LRstripWhites(equation);
 	
 	// TODO: makes this prettier?
 	if (equation[0] == '(' && equation[equation.npos - 1] == ')')
@@ -83,11 +78,11 @@ EquationNode* GenerateEquationTree(string equation, double& x, double& y)
 	}
 	// TODO: 
 
-	size_t* num_end = nullptr;
+	size_t num_end = 0;
 	double value;
 	try
 	{
-		value = std::stod(equation, num_end);
+		value = std::stod(equation, &num_end);
 	}
 	catch (std::invalid_argument err)
 	{
@@ -99,7 +94,7 @@ EquationNode* GenerateEquationTree(string equation, double& x, double& y)
 	}
 
 	// This covers the case of parameters with no operation between them, for example: "15 23.7"
-	if (*num_end != equation.npos)
+	if (num_end < equation.length())
 	{
 		throw EquationError("Invalid Equation: Found invalid parameter, parameter must be a single number/existing variable name");
 	}
@@ -109,3 +104,15 @@ EquationNode* GenerateEquationTree(string equation, double& x, double& y)
 	return node;
 }
 
+
+void LRstripWhites(string& str)
+{
+	size_t pos = str.find_first_not_of(' ');
+	if (pos == str.npos)
+	{
+		throw EquationError("Invalid Argument: Empty/incomplete argument");
+	}
+	str.erase(str.begin(), str.begin()+pos);
+	pos = str.find_last_not_of(' ');
+	str.erase(str.begin() + (pos+1), str.end());
+}

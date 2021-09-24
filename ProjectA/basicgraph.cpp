@@ -8,6 +8,7 @@
 
 // self implements
 #include "Console.h"
+#include "Graph.h"
 
 #include <vector>
 #include <iostream>
@@ -569,6 +570,20 @@ int main(int argc, char const* argv[])
 	bool show_console = true;
 
 	bool show_demo_window = false; // DELETE
+
+	EquationNode* head = nullptr;
+	double x = 0, y = 0;
+	try
+	{
+		head = GenerateEquationTree("5+ 7", x, y);
+	}
+	catch (EquationError err)
+	{
+		std::cout << err.what() << '\n';
+		delete head;
+	}
+	std::cout << head->Evaluate() << '\n';
+	delete head;
 
 	//main loop
 	//while window open + not escape key

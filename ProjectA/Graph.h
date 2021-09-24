@@ -14,7 +14,7 @@ public:
 	void Draw();
 
 private:
-	EquationNode* _graphEquation;
+	//EquationNode* _graphEquation;
 };
 
 /*
