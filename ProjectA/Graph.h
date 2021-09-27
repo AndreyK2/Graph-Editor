@@ -3,6 +3,8 @@
 #include <functional>
 #include <string>
 #include <stdexcept>
+#include <vector>
+#include <utility>
 
 using std::string;
 
@@ -40,18 +42,22 @@ private:
 	std::function<double(EquationNode* curNode)> _evalFunc;
 };
 
-EquationNode* GenerateEquationTree(string equation, double& x, double& y); // TODO: static in EquationNode class?
+EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char,double&>> vars, size_t substrIndex = 0); // TODO: static in EquationNode class?
+size_t unmatchedBracket(string equation);
+void LRstripWhites(string& str);
+size_t findOperator(string str, string operators, bool reverse = false);
+char upper(char c);
 
 class EquationError : public std::exception
 {
 public:
-	// The constructor forces you to release memory when you throw
-	explicit EquationError(const char* message) : msg_(message) {};
-	explicit EquationError(const std::string& message) : msg_(message) {};
+	explicit EquationError(const char* message, size_t index = 0) : _msg(message), _index(index) {};
+	explicit EquationError(const string& message, size_t index = 0) : _msg(message), _index(index) {};
 	virtual ~EquationError() noexcept {};
 
-	virtual const char* what() const noexcept { return msg_.c_str(); };
+	virtual const char* what() const noexcept { return _msg.c_str(); };
 
 protected:
-	string msg_;
+	string _msg;
+	size_t _index;
 };

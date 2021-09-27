@@ -560,6 +560,26 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 //main
 int main(int argc, char const* argv[])
 {
+	EquationNode* head = nullptr;
+	std::vector<std::pair<char, double&>> vars;
+	double x = 0, y = 0;
+	std::pair<char, double&> y_var('y',y), x_var('x', x);
+	vars.push_back(y_var); vars.push_back(x_var);
+	bool failed = false;
+	try
+	{
+		head = GenerateEquationTree(" x ", vars);
+	}
+	catch (EquationError err)
+	{
+		std::cout << err.what() << '\n';
+		failed = true;
+	}
+	if(!failed) std::cout << head->Evaluate() << '\n';
+	delete head;
+
+
+
 	//init glfw, shaders, axis buffer, etc
 	init();
 
@@ -571,19 +591,7 @@ int main(int argc, char const* argv[])
 
 	bool show_demo_window = false; // DELETE
 
-	EquationNode* head = nullptr;
-	double x = 0, y = 0;
-	try
-	{
-		head = GenerateEquationTree("5+ 7", x, y);
-	}
-	catch (EquationError err)
-	{
-		std::cout << err.what() << '\n';
-		delete head;
-	}
-	std::cout << head->Evaluate() << '\n';
-	delete head;
+	
 
 	//main loop
 	//while window open + not escape key
