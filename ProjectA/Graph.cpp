@@ -1,7 +1,9 @@
 #include "Graph.h"
 #include <stack>
 
-EquationNode::EquationNode(EquationNode* left = nullptr, EquationNode* right = nullptr)
+
+
+EquationNode::EquationNode(EquationNode* left, EquationNode* right)
 	: _left(left), _right(right)
 {
 	_evalFunc = [](EquationNode * curNode) { return 0.0; };
@@ -19,7 +21,7 @@ EquationNode::~EquationNode()
 	}
 }
 
-EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char, double&>> vars, size_t substrIndex)
+EquationNode* GenerateEquationTree(string equation, vector<pair<char, double&>> vars, size_t substrIndex)
 {
 	EquationNode* node = nullptr;
 	size_t pos;
@@ -30,12 +32,12 @@ EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char, 
 	{
 		pos = unmatchedBracket(equation);
 		if (pos != equation.npos)
-			throw EquationError("Invalid Equation: Found unmatched bracket", substrIndex + pos);
+			throw EquationError("Found unmatched bracket", substrIndex + pos);
 	}
 	
 	pos = equation.find_first_not_of(" ");
 	if (pos == equation.npos)
-		throw EquationError("Invalid Equation: Missing parameter/empty input", substrIndex);
+		throw EquationError("Missing parameter/empty input", substrIndex);
 	substrIndex += pos;
 	LRstripWhites(equation);
 
@@ -57,7 +59,7 @@ EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char, 
 	if (pos != equation.npos) // TODO: put in func?
 	{
 		node = new EquationNode;
-		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars));
+		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
 		node->setRight(GenerateEquationTree(equation.substr(pos+1, equation.npos), vars, substrIndex + pos + 1));
 		if(equation[pos] == '+')
 			node->SetEvaluationFunc([](EquationNode * curNode) {return curNode->left()->Evaluate() + curNode->right()->Evaluate(); });
@@ -70,7 +72,7 @@ EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char, 
 	if (pos != equation.npos)
 	{
 		node = new EquationNode;
-		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars));
+		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
 		node->setRight(GenerateEquationTree(equation.substr(pos + 1, equation.npos), vars, substrIndex + pos + 1));
 		if(equation[pos] == '*')
 			node->SetEvaluationFunc([](EquationNode * curNode) {return curNode->left()->Evaluate() * curNode->right()->Evaluate(); });
@@ -83,7 +85,7 @@ EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char, 
 	if (pos != equation.npos)
 	{
 		node = new EquationNode;
-		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars));
+		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
 		node->setRight(GenerateEquationTree(equation.substr(pos + 1, equation.npos), vars, substrIndex + pos + 1));
 		node->SetEvaluationFunc([](EquationNode * curNode) {return pow(curNode->left()->Evaluate(),curNode->right()->Evaluate()); });
 		return node;
@@ -94,6 +96,56 @@ EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char, 
 	// --
 	// Beginning of function checks (Trig, log, ...)
 
+	pair<int, size_t> mathFunction = getFunction(equation);
+	int type = mathFunction.first;
+	pos = mathFunction.second;
+	if (pos != equation.npos)
+	{
+		node = new EquationNode;
+		node->setLeft(GenerateEquationTree(equation.substr(pos, equation.npos), vars, substrIndex + pos));
+
+		std::function<double(EquationNode * curNode)> evalFunc;
+		switch (type)
+		{
+		case COSINE:
+		{
+			evalFunc = [](EquationNode * curNode) {return cos(curNode->left()->Evaluate()); };
+			break;
+		}
+		case SINE:
+		{
+			evalFunc = [](EquationNode * curNode) {return sin(curNode->left()->Evaluate()); };
+			break;
+		}
+		case TANGENT:
+		{
+			evalFunc = [](EquationNode * curNode) {return tan(curNode->left()->Evaluate()); };
+			break;
+		}
+		case ACOSINE:
+		{
+			evalFunc = [](EquationNode * curNode) {return acos(curNode->left()->Evaluate()); };
+			break;
+		}
+		case ASINE:
+		{
+			evalFunc = [](EquationNode * curNode) {return asin(curNode->left()->Evaluate()); };
+			break;
+		}
+		case ATANGENT:
+		{
+			evalFunc = [](EquationNode * curNode) {return atan(curNode->left()->Evaluate()); };
+			break;
+		}
+		case LOG:
+		{
+			evalFunc = [](EquationNode * curNode) {return log(curNode->left()->Evaluate()); };
+			break;
+		}
+		}
+		node->SetEvaluationFunc(evalFunc);
+		return node;
+	}
 
 
 	// End of function checks
@@ -120,17 +172,17 @@ EquationNode* GenerateEquationTree(string equation, std::vector<std::pair<char, 
 	}
 	catch (std::invalid_argument err)
 	{
-		throw EquationError("Invalid Equation: Found invalid parameter, parameter must be a single number/existing variable name", substrIndex);
+		throw EquationError("Found invalid parameter, parameter must be a single number/existing variable name", substrIndex);
 	}
 	catch (std::out_of_range err)
 	{
-		throw EquationError("Invalid Equation: Parameter value too large", substrIndex);
+		throw EquationError("Parameter value too large", substrIndex);
 	}
 
 	// This covers the case of parameters with no operation between them, for example: "15 23.7" (stod succeeds here)
 	if (num_end < equation.length())
 	{
-		throw EquationError("Invalid Equation: Found invalid parameter, parameter must be a single number/existing variable name", substrIndex);
+		throw EquationError("Found invalid parameter, parameter must be a single number/existing variable name", substrIndex);
 	}
 	
 	node = new EquationNode;
@@ -212,5 +264,31 @@ size_t findOperator(string str, string operators, bool reverse)
 
 char upper(char c)
 {
-	return c - (97 - 65);
+	if (c >= 97 && c <= 122) c -= (97 - 65);
+	return c;
 }
+
+
+
+pair<int, size_t> getFunction(string equation)
+{
+	void* func = nullptr;
+	for (int i = 0; i < equation.length(); i++)
+	{
+		equation[i] = upper(equation[i]);
+	}
+
+	for (int i = 0; i < funcNames.size(); i++)
+	{
+		for (string funcName : funcNames[i])
+		{
+			if (equation.find(funcName) == 0)
+			{
+				return { i, funcName.length() };
+			}
+		}
+	}
+
+	return {NONE, equation.npos};
+}
+

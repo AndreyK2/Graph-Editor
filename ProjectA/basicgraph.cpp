@@ -560,6 +560,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 //main
 int main(int argc, char const* argv[])
 {
+	// temporary debugging
 	EquationNode* head = nullptr;
 	std::vector<std::pair<char, double&>> vars;
 	double x = 0, y = 0;
@@ -568,7 +569,7 @@ int main(int argc, char const* argv[])
 	bool failed = false;
 	try
 	{
-		head = GenerateEquationTree(" x ", vars);
+		head = GenerateEquationTree(" cos(3.14) ", vars);
 	}
 	catch (EquationError err)
 	{
