@@ -5,18 +5,17 @@
 #include <stdexcept>
 #include <vector>
 #include <utility>
+#include <glew.h>
 
 using std::string; using std::vector; using std::pair;
 
-class Graph
-{
-public:
-	Graph();
 
-	void Draw();
 
-private:
-	//EquationNode* _graphEquation;
+//a point in 3d space (used on 2d & 3d graphs)
+struct position {
+	GLfloat x;
+	GLfloat y;
+	GLfloat z;
 };
 
 /*
@@ -43,13 +42,17 @@ private:
 };
 
 
-EquationNode* GenerateEquationTree(string equation, vector<pair<char,double&>> vars, size_t substrIndex = 0); // TODO: static in EquationNode class?
+
+
+EquationNode* GenerateEquationTree(string equation, vector<pair<char,double*>> vars, size_t substrIndex = 0); // TODO: static in EquationNode class?
 size_t unmatchedBracket(string equation);
 void LRstripWhites(string& str);
 size_t findOperator(string str, string operators, bool reverse = false);
 char upper(char c);
 pair<int, size_t> getFunction(string equation);
 
+
+// TODO: move func and func names to a structure?
 enum mathFunctions
 {
 	COSINE = 0, SINE, TANGENT,
@@ -80,4 +83,40 @@ public:
 protected:
 	string _msg;
 	size_t _index;
+};
+
+class Graph
+{
+public:
+	Graph(size_t id, double* x, double* z, EquationNode* graphEquation = nullptr);
+
+	void Generate();
+	void Draw();
+
+	void SetEquation(EquationNode* graphEquation);
+
+private:
+	EquationNode* _graphEquation;
+	size_t _id;
+	size_t _samples;
+	bool _draw2D;
+	bool _draw3D;
+	GLuint _buffer3D1;
+	GLuint _buffer3D2;
+	GLuint _buffer2D;
+	double* _x; double* _z;
+};
+
+
+class GraphManager
+{
+public:
+	GraphManager();
+
+	void newGraph(string equation = "0");
+	void Draw();
+private:
+	vector<Graph> _graphs;
+	vector<pair<char, double*>> _vars;
+	size_t _curId;
 };

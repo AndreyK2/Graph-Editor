@@ -27,6 +27,5 @@ private:
 	bool _scrollToBottom;
 	bool _focused;
 
-	unsigned int _deletthis;
 	// some pointer to graph manager
 };

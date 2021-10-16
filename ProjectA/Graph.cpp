@@ -3,6 +3,46 @@
 
 
 
+void Graph::Draw()
+{
+	GLuint uniform_color;
+	//allowed to draw?
+	if (_draw3D) {
+		//color for 3d graph pt 1
+		glUniform4f(uniform_color, 1, 0.5, 0.1, 1);
+		// graph
+		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D1);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		for (int i = 0; i < _samples * 2; i++) {
+			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
+		}
+		glDisableVertexAttribArray(0);
+
+		//color for 3d graph pt 2
+		glUniform4f(uniform_color, 1, 0, 0, 1);
+		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D2);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		for (int i = 0; i < _samples * 2; i++) {
+			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
+		}
+		glDisableVertexAttribArray(0);
+	}
+
+	//allowed to draw?
+	if (_draw2D) {
+		//color for 2d graph
+		glUniform4f(uniform_color, 1, 0, 1, 1);
+		glBindBuffer(GL_ARRAY_BUFFER, _buffer2D);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glDrawArrays(GL_LINE_STRIP, 0, _samples * 4);
+		glDisableVertexAttribArray(0);
+	}
+}
+
+
 EquationNode::EquationNode(EquationNode* left, EquationNode* right)
 	: _left(left), _right(right)
 {
@@ -21,7 +61,7 @@ EquationNode::~EquationNode()
 	}
 }
 
-EquationNode* GenerateEquationTree(string equation, vector<pair<char, double&>> vars, size_t substrIndex)
+EquationNode* GenerateEquationTree(string equation, vector<pair<char, double*>> vars, size_t substrIndex)
 {
 	EquationNode* node = nullptr;
 	size_t pos;
@@ -153,13 +193,13 @@ EquationNode* GenerateEquationTree(string equation, vector<pair<char, double&>> 
 	// Beginning of raw value checks
 
 	
-	for (std::pair<char, double&> var : vars)
+	for (std::pair<char, double*> var : vars)
 	{
-		if (equation.length() == 1 && upper(equation[0]) == upper(var.first)) // TODO: self implement toupper to not include cctype?
+		if (equation.length() == 1 && upper(equation[0]) == upper(var.first)) 
 		{
 			node = new EquationNode;
-			double& var_ref = var.second;
-			node->SetEvaluationFunc([&var_ref](EquationNode * curNode) { return var_ref; });
+			double* var_ref = var.second;
+			node->SetEvaluationFunc([var_ref](EquationNode * curNode) { return *var_ref; });
 			return node;
 		}
 	}
@@ -292,3 +332,123 @@ pair<int, size_t> getFunction(string equation)
 	return {NONE, equation.npos};
 }
 
+Graph::Graph(size_t id, double* x, double* z, EquationNode* graphEquation) : _id(id), _x(x), _z(z)
+{
+	_draw3D = true; _draw2D = true;
+	_graphEquation = graphEquation;
+	_samples = 30;
+	_buffer3D1 = NULL; _buffer3D2 = NULL; _buffer2D = NULL;
+}
+
+//
+// ------ Graph ------
+//
+
+void Graph::Generate()
+{
+	//size of axis & marks
+	int graph_size = 100;
+	//scale y axis (because otherwise its between 0-1 while x is -30 to +30)
+	int graph_y_scale = 50;
+
+	unsigned int estimatedPolys3D = pow(_samples * 2, 2);
+	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
+	position* graph_3d_2 = (position*)malloc(estimatedPolys3D * sizeof(position));
+
+	unsigned int estimatedPolys2D = _samples * 2;
+	position* graph_2d = (position*)malloc(estimatedPolys2D * sizeof(position));
+
+	int index = 0;
+
+	//generate 3d graph
+	for (*_x = -_samples; *_x < _samples; *_x++) {
+		for (*_z = -_samples; *_z < _samples; *_z++) {
+			graph_3d_1[index].x = (GLfloat)*_x;
+			graph_3d_1[index].z = (GLfloat)*_z;
+
+			graph_3d_2[index].x = (GLfloat)*_z;
+			graph_3d_2[index].z = (GLfloat)*_x;
+
+			// TODO: incomplete function domain handling
+			graph_3d_1[index].y = _graphEquation->Evaluate();
+			graph_3d_2[index].y = _graphEquation->Evaluate();
+
+			index++;
+		}
+	}
+
+	//generate graph_2d
+	for (*_x = -_samples; *_x < _samples; ++ *_x) {
+		index = *_x + _samples;
+		//2d - z always 1
+		graph_2d[index].z = 0;
+		//x always same
+		graph_2d[index].x = (GLfloat)*_x;
+
+		graph_2d[index].y = _graphEquation->Evaluate();
+	}
+
+	//buffers for 3d graph
+	glGenBuffers(1, &_buffer3D1);
+	glBindBuffer(GL_ARRAY_BUFFER, _buffer3D1);
+	glBufferData(GL_ARRAY_BUFFER, estimatedPolys3D * sizeof(position), graph_3d_1, GL_STATIC_DRAW);
+	glGenBuffers(1, &_buffer3D2);
+	glBindBuffer(GL_ARRAY_BUFFER, _buffer3D2);
+	glBufferData(GL_ARRAY_BUFFER, estimatedPolys3D * sizeof(position), graph_3d_2, GL_STATIC_DRAW);
+
+	//buffer for 2d graph
+	glGenBuffers(1, &_buffer2D);
+	glBindBuffer(GL_ARRAY_BUFFER, _buffer2D);
+	glBufferData(GL_ARRAY_BUFFER, estimatedPolys2D * sizeof(position), graph_2d, GL_STATIC_DRAW);
+
+	free(graph_3d_1);
+	free(graph_3d_2);
+	free(graph_2d);
+
+	//console debug
+	// TODO: Replace with logging
+	printf("3D graph generated, samples used: %d\n", _samples * 2);
+	printf("2D graph generated, samples used: %d\n", _samples * 2);
+	int polyCount = (pow(_samples * 2, 2) + _samples * 2);
+	printf("Total number of polygons: %d\n", polyCount);
+}
+
+GraphManager::GraphManager()
+{
+	_curId = 0;
+	double* val;
+	_vars.push_back({ 'x', val });
+	_vars.push_back({ 'z', val });
+}
+
+void GraphManager::Draw()
+{
+	// TODO: Implement ordered layering?
+	for (Graph g : _graphs)
+	{
+		g.Draw();
+	}
+}
+
+void GraphManager::newGraph(string equation)
+{
+	EquationNode* gEq = GenerateEquationTree(equation, _vars);
+
+	double* xPtr; double* zPtr;
+	for (pair<char, double*> var : _vars)
+	{
+		if (var.first == 'x')
+		{
+			xPtr = var.second;
+		}
+		else if (var.first == 'z')
+		{
+			zPtr = var.second;
+		}
+	}
+
+	Graph g(_curId, xPtr, zPtr, gEq);
+	_graphs.push_back(g);
+
+	_curId++;
+}

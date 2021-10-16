@@ -9,6 +9,8 @@
 // self implements
 #include "Console.h"
 #include "Graph.h"
+// shaders
+#include "shaders.h"
 
 #include <vector>
 #include <iostream>
@@ -21,38 +23,6 @@ GLFWwindow* window;
 
 // setup -----------------------------------------------------------
 
-//vertex shader w/ two rotation matricies stored
-const char* vertex_shader = "\
-#version 330\n\
-layout(location = 0) in vec3 position;\
-uniform vec3 offset;\
-uniform mat4 perspective;\
-uniform vec2 angle;\
-uniform vec4 color;\
-smooth out vec4 theColor;\
-void main(){\
-  mat4 xRMatrix = mat4(cos(angle.x), 0.0, sin(angle.x), 0.0,\
-                        0.0, 1.0, 0.0, 0.0,\
-                        -sin(angle.x), 0.0, cos(angle.x), 0.0,\
-                        0.0, 0.0, 0.0, 1.0);\
-  mat4 yRMatrix = mat4(1.0, 0.0, 0.0, 0.0,\
-                  0.0, cos(angle.y), -sin(angle.y), 0.0,\
-                  0.0, sin(angle.y), cos(angle.y), 0.0,\
-                  0.0, 0.0, 0.0, 1.0);\
-  vec4 rotatedPosition = vec4( position.xyz, 1.0f ) * xRMatrix * yRMatrix;\
-  vec4 cameraPos = rotatedPosition + vec4(offset.x, offset.y, offset.z, 0.0);\
-  gl_Position = perspective * cameraPos;\
-  theColor = mix( vec4( color.x, color.y, color.z, color.w ), vec4( 0.0f, color.y, color.z, color.w ), position.y / 50 );\
-}";
-
-//fragment shader
-const char* fragment_shader = "\
-#version 330\n\
-smooth in vec4 theColor;\
-out vec4 outputColor;\
-void main(){\
-  outputColor = theColor;\
-}";
 
 
 //init gl vars: buffers
@@ -73,7 +43,7 @@ GLuint uniform_perspective;
 
 
 //number of graph samples to make
-int graph_samples = 30;
+int _graphSamples = 30;
 //size of axis & marks
 int graph_size = 100;
 //scale y axis (because otherwise its between 0-1 while x is -30 to +30)
@@ -128,11 +98,11 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 void perspective(double fov);
 
-void init() {
+void initBackends()
+{
 	glfwInit();
 	glfwSetErrorCallback(glfw_error_callback);
 
-	const char* glsl_version = "#version 150";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -150,6 +120,11 @@ void init() {
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(MessageCallback, 0);
 
+}
+
+void initImGUI()
+{
+	const char* glsl_version = "#version 330";
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -159,7 +134,9 @@ void init() {
 	// Setup Platform/Renderer backends
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
+}
 
+void initGraphEnvironment() {
 	//compile vertex shader
 	GLuint v_shader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(v_shader, 1, &vertex_shader, 0); //glShaderSource( v_shader, 1, (const GLchar**)&vertex_shader, 0 );
@@ -299,94 +276,11 @@ void perspective(double fov)
 
 //generate graph data function
 void generate() {
-	//reset data
-	unsigned int estimatedPolys3D = pow(graph_samples * 2, 2);
-	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
-	position* graph_3d_2 = (position*)malloc(estimatedPolys3D * sizeof(position));
-
-	//2d graph
-	unsigned int estimatedPolys2D = graph_samples * 2;
-	position* graph_2d = (position*)malloc(estimatedPolys2D * sizeof(position));
-
-	//ints for point generators
-	int i, j;
-	int index = 0;
-
-	//generate graph_3d_1
-	for (i = -graph_samples; i < graph_samples; i++) {
-		for (j = -graph_samples; j < graph_samples; j++) {
-			graph_3d_1[index].x = (GLfloat) i;
-			graph_3d_1[index].z = (GLfloat) j;
-			float d = sqrt(i * i + j * j);
-			if (d == 0.0) //////////////////
-				d = 1;
-
-			float f_xz = (sin(d) / d);
-			graph_3d_1[index].y = (sin(d) / d) * graph_y_scale;
-
-			index++;
-		}
-	}
-	//generate graph_3d_2
-	index = 0;
-	for (i = -graph_samples; i < graph_samples; i++) {
-		for (j = -graph_samples; j < graph_samples; j++) {
-			graph_3d_2[index].x = (GLfloat) j;
-			graph_3d_2[index].z = (GLfloat) i;
-			float d = sqrt(i * i + j * j);
-			if (d == 0.0)
-				d = 1;
-
-			graph_3d_2[index].y = (sin(d) / d) * graph_y_scale;
-
-			index++;
-		}
-	}
-
-	//generate graph_2d
-	for (i = -graph_samples; i < graph_samples; ++i) {
-		index = i + graph_samples;
-		//2d - z always 1
-		graph_2d[index].z = 0;
-		//x always same
-		graph_2d[index].x = (GLfloat) i;
-		//cant divide by 0, set to our top point
-		if (i == 0) {
-			graph_2d[index].y = graph_y_scale;
-		}
-		else {
-			graph_2d[index].y = sin(i) / i * graph_y_scale;
-		}
-
-
-	}
-
-	//buffers for 3d graph
-	glGenBuffers(1, &buffer_3d_1);
-	glBindBuffer(GL_ARRAY_BUFFER, buffer_3d_1);
-	glBufferData(GL_ARRAY_BUFFER, estimatedPolys3D * sizeof(position), graph_3d_1, GL_STATIC_DRAW);
-	glGenBuffers(1, &buffer_3d_2);
-	glBindBuffer(GL_ARRAY_BUFFER, buffer_3d_2);
-	glBufferData(GL_ARRAY_BUFFER, estimatedPolys3D * sizeof(position), graph_3d_2, GL_STATIC_DRAW);
-
-	//buffer for 2d graph
-	glGenBuffers(1, &buffer_2d);
-	glBindBuffer(GL_ARRAY_BUFFER, buffer_2d);
-	glBufferData(GL_ARRAY_BUFFER, estimatedPolys2D * sizeof(position), graph_2d, GL_STATIC_DRAW);
-
-	free(graph_3d_1);
-	free(graph_3d_2);
-	free(graph_2d);
-
-	//console debug
-	printf("3D graph generated, samples used: %d\n", graph_samples * 2);
-	printf("2D graph generated, samples used: %d\n", graph_samples * 2);
-	int polyCount = (pow(graph_samples * 2, 2) + graph_samples * 2);
-	printf("Total number of polygons: %d\n", polyCount);
+	
 }
 
 //draw function
-void draw() {
+void draw(GraphManager gm) {
 	int i;
 
 	//use our shader program
@@ -412,40 +306,8 @@ void draw() {
 	glDrawArrays(GL_LINES, 0, 600);
 	glDisableVertexAttribArray(0);
 
-	//allowed to draw?
-	if (draw_3d) {
-		//color for 3d graph pt 1
-		glUniform4f(uniform_color, 1, 0.5, 0.1, 1);
-		// graph
-		glBindBuffer(GL_ARRAY_BUFFER, buffer_3d_1);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		for (i = 0; i < graph_samples * 2; i++) {
-			glDrawArrays(GL_LINE_STRIP, i * graph_samples * 2, graph_samples * 2);
-		}
-		glDisableVertexAttribArray(0);
-
-		//color for 3d graph pt 2
-		glUniform4f(uniform_color, 1, 0, 0, 1);
-		glBindBuffer(GL_ARRAY_BUFFER, buffer_3d_2);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		for (i = 0; i < graph_samples * 2; i++) {
-			glDrawArrays(GL_LINE_STRIP, i * graph_samples * 2, graph_samples * 2);
-		}
-		glDisableVertexAttribArray(0);
-	}
-
-	//allowed to draw?
-	if (draw_2d) {
-		//color for 2d graph
-		glUniform4f(uniform_color, 1, 0, 1, 1);
-		glBindBuffer(GL_ARRAY_BUFFER, buffer_2d);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glDrawArrays(GL_LINE_STRIP, 0, graph_samples * 4);
-		glDisableVertexAttribArray(0);
-	}
+	// Draw each graph
+	gm.Draw();
 
 	//stop using latest buffer + shader
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -501,18 +363,19 @@ void keyboard() {
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	if (action == GLFW_PRESS) {
 		//decrease samples
+		/* TODO: implement per graph via gui
 		if (key == '-') {
-			graph_samples -= 2;
-			if (graph_samples == 0) graph_samples = 1; //limit to minimum 1
+			_graphSamples -= 2;
+			if (_graphSamples == 0) _graphSamples = 1; //limit to minimum 1
 			generate();
 			//increase samples (keep going to crash)
-		}
-		else if (key == '=') {
-			graph_samples += 2;
+		} 
+		if (key == '=') {
+			_graphSamples += 2;
 			generate();
 			//reset everything
-		}
-		else if (key == 'R') {
+		}*/
+		if (key == 'R') {
 			xang = 0;
 			yang = 0;
 			zpos = -40;
@@ -520,8 +383,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			ypos = 0;
 			draw_2d = 1;
 			draw_3d = 1;
-			graph_samples = 30;
-			generate();
 			//2d only
 		}
 		else if (key == '2') {
@@ -555,39 +416,21 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
-// the actual program -----------------------------------------------------------
 
 //main
 int main(int argc, char const* argv[])
 {
-	// temporary debugging
-	EquationNode* head = nullptr;
-	std::vector<std::pair<char, double&>> vars;
-	double x = 0, y = 0;
-	std::pair<char, double&> y_var('y',y), x_var('x', x);
-	vars.push_back(y_var); vars.push_back(x_var);
-	bool failed = false;
-	try
-	{
-		head = GenerateEquationTree(" cos(3.14) ", vars);
-	}
-	catch (EquationError err)
-	{
-		std::cout << err.what() << '\n';
-		failed = true;
-	}
-	if(!failed) std::cout << head->Evaluate() << '\n';
-	delete head;
 
-
-
-	//init glfw, shaders, axis buffer, etc
-	init();
+	//init glfw, opengl, imgui, shaders, axis buffer
+	initBackends();
+	initImGUI();
+	initGraphEnvironment();
 
 	//generate + buffer graph data
-	generate();
+	//generate();
 
 	Console console;
+	GraphManager graphManager;
 	bool show_console = true;
 
 	bool show_demo_window = false; // DELETE
@@ -601,7 +444,7 @@ int main(int argc, char const* argv[])
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClearColor(0.1, 0.1, 0.1, 1.0);
 		//draw
-		draw();
+		draw(graphManager);
 
 		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
@@ -629,4 +472,35 @@ int main(int argc, char const* argv[])
 	//end
 	glfwDestroyWindow(window);
 	glfwTerminate();
+}
+
+
+
+
+
+
+
+
+
+
+
+void eqdebug()
+{// temporary debugging
+	EquationNode* head = nullptr;
+	std::vector<std::pair<char, double&>> vars;
+	double x = 0, y = 0;
+	std::pair<char, double&> y_var('y', y), x_var('x', x);
+	vars.push_back(y_var); vars.push_back(x_var);
+	bool failed = false;
+	try
+	{
+		head = GenerateEquationTree(" cos(3.14) ", vars);
+	}
+	catch (EquationError err)
+	{
+		std::cout << err.what() << '\n';
+		failed = true;
+	}
+	if (!failed) std::cout << head->Evaluate() << '\n';
+	delete head;
 }

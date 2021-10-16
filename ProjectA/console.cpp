@@ -14,7 +14,6 @@ Console::Console()
 	_scrollToBottom = false;
 	_focused = false;
 	//AddLog("Welcome to Dear ImGui!");
-	_deletthis = 0;
 }
 
 /*
