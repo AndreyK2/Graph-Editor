@@ -44,7 +44,7 @@ private:
 
 
 
-EquationNode* GenerateEquationTree(string equation, vector<pair<char,double*>> vars, size_t substrIndex = 0); // TODO: static in EquationNode class?
+EquationNode* GenerateEquationTree(string equation, vector<pair<char,double>>& vars, size_t substrIndex = 0); // TODO: static in EquationNode class?
 size_t unmatchedBracket(string equation);
 void LRstripWhites(string& str);
 size_t findOperator(string str, string operators, bool reverse = false);
@@ -88,7 +88,7 @@ protected:
 class Graph
 {
 public:
-	Graph(size_t id, double* x, double* z, EquationNode* graphEquation = nullptr);
+	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation = nullptr);
 
 	void Generate();
 	void Draw();
@@ -98,25 +98,27 @@ public:
 private:
 	EquationNode* _graphEquation;
 	size_t _id;
-	size_t _samples;
-	bool _draw2D;
-	bool _draw3D;
-	GLuint _buffer3D1;
+	size_t _samples; 
+	double _sampleSize;
+	bool _draw2D; bool _draw3D;
+	GLuint _buffer3D1; 
 	GLuint _buffer3D2;
 	GLuint _buffer2D;
-	double* _x; double* _z;
+	GLuint _program;
+	double& _x; double& _z;
 };
 
 
 class GraphManager
 {
 public:
-	GraphManager();
+	GraphManager(GLuint program);
 
-	void newGraph(string equation = "0");
+	void NewGraph(string equation = "0");
 	void Draw();
 private:
 	vector<Graph> _graphs;
-	vector<pair<char, double*>> _vars;
+	vector<pair<char, double>> _vars;
 	size_t _curId;
+	GLuint _program;
 };

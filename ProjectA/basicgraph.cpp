@@ -62,12 +62,7 @@ int draw_2d = 1;
 int draw_3d = 1;
 
 
-//a point in 3d space (used on 2d & 3d graphs)
-struct position {
-	GLfloat x;
-	GLfloat y;
-	GLfloat z;
-};
+
 //axis
 struct position axis[6];
 struct position axis_marks[600];
@@ -256,15 +251,6 @@ void perspective(double fov)
 	theMatrix[14] = (2 * fzFar * fzNear) / (fzNear - fzFar);
 	theMatrix[11] = -1.0f;
 
-	/* transpose this?
-	vector<vector<float>> perspectiveMat = {
-	  {fFrustumScale,   0,              0, 0},
-	  {0,               fFrustumScale,  0, 0},
-	  {0,               0,              (fzFar + fzNear) / (fzNear - fzFar), (2 * fzFar * fzNear) / (fzNear - fzFar)},
-	  {0,               0,              -1,, 0}
-	  };
-	*/
-
 	//bind data to shader
 	glUseProgram(program);
 	glUniformMatrix4fv(uniform_perspective, 1, GL_TRUE, theMatrix); //perspective matrix
@@ -274,10 +260,6 @@ void perspective(double fov)
 	glUseProgram(0);
 }
 
-//generate graph data function
-void generate() {
-	
-}
 
 //draw function
 void draw(GraphManager gm) {
@@ -430,7 +412,7 @@ int main(int argc, char const* argv[])
 	//generate();
 
 	Console console;
-	GraphManager graphManager;
+	GraphManager graphManager(program);
 	bool show_console = true;
 
 	bool show_demo_window = false; // DELETE
@@ -483,7 +465,7 @@ int main(int argc, char const* argv[])
 
 
 
-
+/*
 void eqdebug()
 {// temporary debugging
 	EquationNode* head = nullptr;
@@ -503,4 +485,4 @@ void eqdebug()
 	}
 	if (!failed) std::cout << head->Evaluate() << '\n';
 	delete head;
-}
+}*/

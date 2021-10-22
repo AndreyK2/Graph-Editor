@@ -2,47 +2,6 @@
 #include <stack>
 
 
-
-void Graph::Draw()
-{
-	GLuint uniform_color;
-	//allowed to draw?
-	if (_draw3D) {
-		//color for 3d graph pt 1
-		glUniform4f(uniform_color, 1, 0.5, 0.1, 1);
-		// graph
-		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D1);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		for (int i = 0; i < _samples * 2; i++) {
-			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
-		}
-		glDisableVertexAttribArray(0);
-
-		//color for 3d graph pt 2
-		glUniform4f(uniform_color, 1, 0, 0, 1);
-		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D2);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		for (int i = 0; i < _samples * 2; i++) {
-			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
-		}
-		glDisableVertexAttribArray(0);
-	}
-
-	//allowed to draw?
-	if (_draw2D) {
-		//color for 2d graph
-		glUniform4f(uniform_color, 1, 0, 1, 1);
-		glBindBuffer(GL_ARRAY_BUFFER, _buffer2D);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glDrawArrays(GL_LINE_STRIP, 0, _samples * 4);
-		glDisableVertexAttribArray(0);
-	}
-}
-
-
 EquationNode::EquationNode(EquationNode* left, EquationNode* right)
 	: _left(left), _right(right)
 {
@@ -61,7 +20,7 @@ EquationNode::~EquationNode()
 	}
 }
 
-EquationNode* GenerateEquationTree(string equation, vector<pair<char, double*>> vars, size_t substrIndex)
+EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& vars, size_t substrIndex)
 {
 	EquationNode* node = nullptr;
 	size_t pos;
@@ -193,13 +152,13 @@ EquationNode* GenerateEquationTree(string equation, vector<pair<char, double*>> 
 	// Beginning of raw value checks
 
 	
-	for (std::pair<char, double*> var : vars)
+	for (std::pair<char, double>& var : vars)
 	{
 		if (equation.length() == 1 && upper(equation[0]) == upper(var.first)) 
 		{
 			node = new EquationNode;
-			double* var_ref = var.second;
-			node->SetEvaluationFunc([var_ref](EquationNode * curNode) { return *var_ref; });
+			double& var_ref = var.second;
+			node->SetEvaluationFunc([&var_ref](EquationNode * curNode) { return var_ref; });
 			return node;
 		}
 	}
@@ -332,11 +291,11 @@ pair<int, size_t> getFunction(string equation)
 	return {NONE, equation.npos};
 }
 
-Graph::Graph(size_t id, double* x, double* z, EquationNode* graphEquation) : _id(id), _x(x), _z(z)
+Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation) : _id(id), _program(program), _x(x), _z(z)
 {
 	_draw3D = true; _draw2D = true;
 	_graphEquation = graphEquation;
-	_samples = 30;
+	_samples = 30; _sampleSize = 1;
 	_buffer3D1 = NULL; _buffer3D2 = NULL; _buffer2D = NULL;
 }
 
@@ -348,8 +307,6 @@ void Graph::Generate()
 {
 	//size of axis & marks
 	int graph_size = 100;
-	//scale y axis (because otherwise its between 0-1 while x is -30 to +30)
-	int graph_y_scale = 50;
 
 	unsigned int estimatedPolys3D = pow(_samples * 2, 2);
 	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
@@ -358,19 +315,30 @@ void Graph::Generate()
 	unsigned int estimatedPolys2D = _samples * 2;
 	position* graph_2d = (position*)malloc(estimatedPolys2D * sizeof(position));
 
-	int index = 0;
+
 
 	//generate 3d graph
-	for (*_x = -_samples; *_x < _samples; *_x++) {
-		for (*_z = -_samples; *_z < _samples; *_z++) {
-			graph_3d_1[index].x = (GLfloat)*_x;
-			graph_3d_1[index].z = (GLfloat)*_z;
-
-			graph_3d_2[index].x = (GLfloat)*_z;
-			graph_3d_2[index].z = (GLfloat)*_x;
+	int index = 0;
+	double range = (_samples * _sampleSize);
+	for (_x = -range; _x < range; _x += _sampleSize) {
+		for (_z = -range; _z < range; _z += _sampleSize) {
+			graph_3d_1[index].x = (GLfloat)_x;
+			graph_3d_1[index].z = (GLfloat)_z;
 
 			// TODO: incomplete function domain handling
-			graph_3d_1[index].y = _graphEquation->Evaluate();
+			graph_3d_1[index].y = _graphEquation->Evaluate(); 
+
+			index++;
+		}
+	}
+	
+	index = 0;
+	for (_z = -range; _z < range; _z += _sampleSize) {
+		for (_x = -range; _x < range; _x += _sampleSize) {
+			graph_3d_2[index].x = (GLfloat)_x;
+			graph_3d_2[index].z = (GLfloat)_z;
+
+			// TODO: incomplete function domain handling
 			graph_3d_2[index].y = _graphEquation->Evaluate();
 
 			index++;
@@ -378,14 +346,15 @@ void Graph::Generate()
 	}
 
 	//generate graph_2d
-	for (*_x = -_samples; *_x < _samples; ++ *_x) {
-		index = *_x + _samples;
-		//2d - z always 1
-		graph_2d[index].z = 0;
-		//x always same
-		graph_2d[index].x = (GLfloat)*_x;
+	index = 0;
+	_z = 0;
+	for (_x = -range; _x < range; _x += _sampleSize) {
+		graph_2d[index].x = (GLfloat)_x;
+		graph_2d[index].z = (GLfloat)_z;
 
 		graph_2d[index].y = _graphEquation->Evaluate();
+
+		index++;
 	}
 
 	//buffers for 3d graph
@@ -413,12 +382,54 @@ void Graph::Generate()
 	printf("Total number of polygons: %d\n", polyCount);
 }
 
-GraphManager::GraphManager()
+void Graph::Draw()
+{
+	GLuint uniform_color = glGetUniformLocation(_program, "color");
+	//allowed to draw?
+	if (_draw3D) {
+		//color for 3d graph pt 1
+		glUniform4f(uniform_color, 1, 0.5, 0.1, 1);
+		// graph
+		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D1);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		for (int i = 0; i < _samples * 2; i++) {
+			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
+		}
+		glDisableVertexAttribArray(0);
+
+		//color for 3d graph pt 2
+		glUniform4f(uniform_color, 1, 0, 0, 1);
+		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D2);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		for (int i = 0; i < _samples * 2; i++) {
+			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
+		}
+		glDisableVertexAttribArray(0);
+	}
+
+	//allowed to draw?
+	if (_draw2D) {
+		//color for 2d graph
+		glUniform4f(uniform_color, 1, 0, 1, 1);
+		glBindBuffer(GL_ARRAY_BUFFER, _buffer2D);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glDrawArrays(GL_LINE_STRIP, 0, _samples * 4);
+		glDisableVertexAttribArray(0);
+	}
+}
+
+void Graph::SetEquation(EquationNode* graphEquation)
+{
+}
+
+GraphManager::GraphManager(GLuint program) : _program(program)
 {
 	_curId = 0;
-	double* val;
-	_vars.push_back({ 'x', val });
-	_vars.push_back({ 'z', val });
+	_vars.push_back({ 'x', 0 });
+	_vars.push_back({ 'z', 0 });
 }
 
 void GraphManager::Draw()
@@ -430,24 +441,19 @@ void GraphManager::Draw()
 	}
 }
 
-void GraphManager::newGraph(string equation)
+void GraphManager::NewGraph(string equation)
 {
 	EquationNode* gEq = GenerateEquationTree(equation, _vars);
 
-	double* xPtr; double* zPtr;
-	for (pair<char, double*> var : _vars)
+	size_t pos_x; size_t pos_z;
+	for (size_t i = 0; i < _vars.size(); i++)
 	{
-		if (var.first == 'x')
-		{
-			xPtr = var.second;
-		}
-		else if (var.first == 'z')
-		{
-			zPtr = var.second;
-		}
+		if (_vars[i].first == 'x') pos_x = i;
+		else if (_vars[i].first == 'z') pos_z = i;
 	}
 
-	Graph g(_curId, xPtr, zPtr, gEq);
+	Graph g(_curId, _program, _vars[pos_x].second, _vars[pos_z].second, gEq);
+	g.Generate();
 	_graphs.push_back(g);
 
 	_curId++;
