@@ -74,7 +74,7 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-void GLAPIENTRY
+void GLAPIENTRY // TODO: this is only in gl 4? also what is 8251
 MessageCallback(GLenum source,
 	GLenum type,
 	GLuint id,
@@ -83,7 +83,8 @@ MessageCallback(GLenum source,
 	const GLchar* message,
 	const void* userParam)
 {
-	fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+
+	if(type != 0x8251) fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
 		(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
 		type, severity, message);
 }
@@ -103,12 +104,12 @@ void initBackends()
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	window = glfwCreateWindow(1000, 800, "Graph", WINDOWED, NULL);
-	glfwSwapInterval(1); // Enable Vsync
+	window = glfwCreateWindow(1920, 1280, "Graph", WINDOWED, NULL);
 
 	glfwMakeContextCurrent(window);
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSwapInterval(1); // Enable Vsync
 
 	GLenum err = glewInit();
 
@@ -411,8 +412,9 @@ int main(int argc, char const* argv[])
 	//generate + buffer graph data
 	//generate();
 
-	Console console;
+	
 	GraphManager graphManager(program);
+	Console console(&graphManager);
 	bool show_console = true;
 
 	bool show_demo_window = false; // DELETE

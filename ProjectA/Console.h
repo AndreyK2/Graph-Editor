@@ -3,19 +3,21 @@
 #include <vector>
 #include <string>
 #include <imgui.h>
+#include "Graph.h"
 using std::vector; using std::string;
 
 class Console
 {
 public:
 	void Draw(bool* p_open);
-	Console();
+	Console(GraphManager* gm);
 	//TODO: Check if this can be private if I pass "this*" to the forwarding lambda
 	int TextEditCallback(ImGuiInputTextCallbackData* data);
 	bool IsFocused();
 
 private:
 	void ExecCommand(string raw);
+	void IndexedError(string err, string input, size_t index);
 
 	string _inputBuff;
 	vector<string> _log;
@@ -27,5 +29,5 @@ private:
 	bool _scrollToBottom;
 	bool _focused;
 
-	// some pointer to graph manager
+	GraphManager* _graphManager;
 };

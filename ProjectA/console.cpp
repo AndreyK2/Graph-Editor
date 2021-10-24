@@ -1,7 +1,7 @@
 #include "Console.h"
 #include "misc/cpp/imgui_stdlib.h" // TODO: change all includes to this format?
 
-Console::Console()
+Console::Console(GraphManager* gm) : _graphManager(gm)
 {
 	_inputBuff.assign(_inputBuff.size(), 0);
 	_historyPos = -1;
@@ -10,6 +10,7 @@ Console::Console()
 	_commands.push_back("HELP");
 	_commands.push_back("HISTORY");
 	_commands.push_back("CLEAR");
+	_commands.push_back("GRAPH");
 	_autoScroll = true;
 	_scrollToBottom = false;
 	_focused = false;
@@ -70,7 +71,7 @@ void Console::Draw(bool* p_open)
 	{
 		ImVec4 color;
 		bool has_color = false;
-		if (entry.find("[error]") == 0) // user input will start with a prefix
+		if (entry.find("[error]") == 0)
 		{
 			color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
 			has_color = true;
@@ -122,9 +123,95 @@ void Console::Draw(bool* p_open)
 	ImGui::End();
 }
 
-// TODO: Parse and Exec Commands through some manager that has access to graphs.
 void Console::ExecCommand(string raw)
 {
+	// lstrip
+	raw.erase(0, raw.find_first_not_of(' '));
+
+	string cmd = "";
+	bool found = false;
+	for (string command : _commands)
+	{
+		if (raw.find(command) == 0)
+		{
+			cmd = command;
+			raw.erase(0, cmd.size());
+			found = true;
+		}
+	}
+
+	if (!found)
+	{
+		_log.push_back("Unrecognized command");
+		return;
+	}
+		
+	// if command matched
+	// todo raw = substr(...)
+	vector<string> args;
+
+	bool validArgs = true;
+	size_t pos_start = 0; size_t pos_end = 0;
+	while (pos_end != raw.npos) // todo
+	{
+		pos_start = raw.find_first_not_of(' ', pos_end);
+		if (pos_start == raw.npos) break;
+
+		if (raw[pos_start] == '"') // For spaced arguments in quatations
+		{
+			pos_end = raw.find_first_of('"', pos_start + 1);
+			if (pos_end == raw.npos)
+			{
+				validArgs = false;
+				IndexedError("Unmatched quatation", raw, pos_start);
+				break;
+			}
+			else if (pos_end < raw.size() - 1 && raw[pos_end+1] != ' ')
+			{
+				validArgs = false;
+				IndexedError("Invalid quatation argument", raw, pos_start);
+				break;
+			}
+			pos_end++;
+		}
+		else
+		{
+			pos_end = raw.find_first_of(' ', pos_start);
+		}
+		args.push_back(raw.substr(pos_start, pos_end - pos_start));
+	}
+
+	// todo case insensitive
+	if (cmd == "GRAPH")
+	{
+		if (args.size() != 1)
+		{
+			_log.push_back("[error] Invalid usage, try: graph [equation]");
+			return;
+		}
+		
+		try
+		{
+			_graphManager->NewGraph(args[0]);
+		}
+		catch (EquationError err)
+		{
+			IndexedError(err.what(), args[0], err.index());
+		}
+	}
+	else
+	{
+		_log.push_back("Not implemented");
+	}
+}
+
+void Console::IndexedError(string err, string input, size_t index)
+{
+	_log.push_back("[error] " + err);
+	_log.push_back("[error] " + '"' + input + '"');
+	string marker = "^";
+	marker.insert(0, 1+index, ' ');
+	_log.push_back("[error] " + marker);
 }
 
 

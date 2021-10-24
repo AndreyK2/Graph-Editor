@@ -79,6 +79,7 @@ public:
 	virtual ~EquationError() noexcept {};
 
 	virtual const char* what() const noexcept { return _msg.c_str(); };
+	size_t index() const { return _index; };
 
 protected:
 	string _msg;
