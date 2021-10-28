@@ -341,7 +341,7 @@ void keyboard() {
 	}
 }
 
-
+// TODO: disable when focused on sub window (console)
 //glfw keyboard callback (used for one-press actions)
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	if (action == GLFW_PRESS) {

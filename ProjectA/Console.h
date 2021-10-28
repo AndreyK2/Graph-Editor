@@ -31,3 +31,5 @@ private:
 
 	GraphManager* _graphManager;
 };
+
+string toUpper(string s);

@@ -115,7 +115,7 @@ class GraphManager
 public:
 	GraphManager(GLuint program);
 
-	void NewGraph(string equation = "0");
+	size_t NewGraph(string equation = "0");
 	void Draw();
 private:
 	vector<Graph> _graphs;

@@ -106,6 +106,7 @@ void Console::Draw(bool* p_open)
 		_log.push_back(userInputPrefix + _inputBuff);
 		ExecCommand(_inputBuff);
 		reclaim_keyboard_focus = true;
+		_inputBuff.clear();
 	}
 
 	_focused = false;
@@ -132,7 +133,7 @@ void Console::ExecCommand(string raw)
 	bool found = false;
 	for (string command : _commands)
 	{
-		if (raw.find(command) == 0)
+		if (toUpper(raw).find(command) == 0)
 		{
 			cmd = command;
 			raw.erase(0, cmd.size());
@@ -147,7 +148,6 @@ void Console::ExecCommand(string raw)
 	}
 		
 	// if command matched
-	// todo raw = substr(...)
 	vector<string> args;
 
 	bool validArgs = true;
@@ -164,13 +164,13 @@ void Console::ExecCommand(string raw)
 			{
 				validArgs = false;
 				IndexedError("Unmatched quatation", raw, pos_start);
-				break;
+				return;
 			}
 			else if (pos_end < raw.size() - 1 && raw[pos_end+1] != ' ')
 			{
 				validArgs = false;
 				IndexedError("Invalid quatation argument", raw, pos_start);
-				break;
+				return;
 			}
 			pos_end++;
 		}
@@ -181,22 +181,65 @@ void Console::ExecCommand(string raw)
 		args.push_back(raw.substr(pos_start, pos_end - pos_start));
 	}
 
+	// strip quoted args
+	for (string& arg : args)
+	{
+		if (arg[0] == '"')
+		{
+			arg.erase(0, 1);
+			arg.erase(arg.size() - 1, 1);
+		}
+	}
+
+	// handle commands
 	// todo case insensitive
+	size_t cargs = args.size();
 	if (cmd == "GRAPH")
 	{
-		if (args.size() != 1)
+		if (cargs != 1)
 		{
-			_log.push_back("[error] Invalid usage, try: graph [equation]");
+			_log.push_back("Invalid usage, try: graph [equation]");
 			return;
 		}
 		
 		try
 		{
-			_graphManager->NewGraph(args[0]);
+			size_t id = _graphManager->NewGraph(args[0]);
+			_log.push_back("Generated graph with id: " + std::to_string(id)); 
 		}
 		catch (EquationError err)
 		{
 			IndexedError(err.what(), args[0], err.index());
+		}
+	}
+	else if(cmd == "HELP")
+	{
+		if (cargs == 0)
+		{
+			string result = "Available commands:";
+			for (string command : _commands)
+			{
+				result.append(" " + command + ",");
+			}
+			result.erase(result.size() - 1);
+			_log.push_back(result);
+		}
+		else if (cargs == 1)
+		{
+			// todo(?): move command descriptions to type?
+			string cmdName = args[0];
+			if (cmdName == "GRAPH")
+			{
+				_log.push_back("graph [eq]\nGenerates a new 3D graph with equation [eq]");
+			}
+			else
+			{
+				_log.push_back("Unrecognized command");
+			}
+		}
+		else
+		{
+			_log.push_back("Invalid usage, try: \"help\" for available commands, \"help [command name]\" for command description");
 		}
 	}
 	else
@@ -208,11 +251,18 @@ void Console::ExecCommand(string raw)
 void Console::IndexedError(string err, string input, size_t index)
 {
 	_log.push_back("[error] " + err);
-	_log.push_back("[error] " + '"' + input + '"');
+	_log.push_back("[error] " + input);
 	string marker = "^";
-	marker.insert(0, 1+index, ' ');
+	marker.insert(0, index, ' ');
 	_log.push_back("[error] " + marker);
 }
 
-
+string toUpper(string s)
+{
+	for (char& c : s)
+	{
+		c = upper(c);
+	}
+	return s;
+}
 

@@ -441,7 +441,7 @@ void GraphManager::Draw()
 	}
 }
 
-void GraphManager::NewGraph(string equation)
+size_t GraphManager::NewGraph(string equation)
 {
 	EquationNode* gEq = GenerateEquationTree(equation, _vars);
 
@@ -452,9 +452,10 @@ void GraphManager::NewGraph(string equation)
 		else if (_vars[i].first == 'z') pos_z = i;
 	}
 
+	_curId++;
 	Graph g(_curId, _program, _vars[pos_x].second, _vars[pos_z].second, gEq);
 	g.Generate();
 	_graphs.push_back(g);
 
-	_curId++;
+	return _curId;
 }
