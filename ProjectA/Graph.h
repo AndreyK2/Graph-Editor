@@ -90,6 +90,7 @@ class Graph
 {
 public:
 	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation = nullptr);
+	~Graph();
 
 	void Generate();
 	void Draw();

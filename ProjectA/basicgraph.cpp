@@ -74,7 +74,7 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-void GLAPIENTRY // TODO: this is only in gl 4? also what is 8251
+void GLAPIENTRY // TODO: this is only supported in gl 4? also what is 8251
 MessageCallback(GLenum source,
 	GLenum type,
 	GLuint id,

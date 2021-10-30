@@ -10,14 +10,8 @@ EquationNode::EquationNode(EquationNode* left, EquationNode* right)
 
 EquationNode::~EquationNode()
 {
-	if (_left != nullptr)
-	{
-		delete _left;
-	}
-	if (_right != nullptr)
-	{
-		delete _right;
-	}
+	delete _left;
+	delete _right;
 }
 
 EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& vars, size_t substrIndex)
@@ -299,6 +293,11 @@ Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* grap
 	_buffer3D1 = NULL; _buffer3D2 = NULL; _buffer2D = NULL;
 }
 
+Graph::~Graph()
+{
+	delete _graphEquation;
+}
+
 //
 // ------ Graph ------
 //
@@ -459,3 +458,4 @@ size_t GraphManager::NewGraph(string equation)
 
 	return _curId;
 }
+
