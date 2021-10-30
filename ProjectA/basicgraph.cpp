@@ -263,7 +263,7 @@ void perspective(double fov)
 
 
 //draw function
-void draw(GraphManager gm) {
+void draw(GraphManager& gm) {
 	int i;
 
 	//use our shader program

@@ -285,10 +285,10 @@ pair<int, size_t> getFunction(string equation)
 	return {NONE, equation.npos};
 }
 
-Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation) : _id(id), _program(program), _x(x), _z(z)
+Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation) : _id(id), _program(program), 
+	_x(x), _z(z), _graphEquation(graphEquation)
 {
 	_draw3D = true; _draw2D = true;
-	_graphEquation = graphEquation;
 	_samples = 30; _sampleSize = 1;
 	_buffer3D1 = NULL; _buffer3D2 = NULL; _buffer2D = NULL;
 }
@@ -422,6 +422,7 @@ void Graph::Draw()
 
 void Graph::SetEquation(EquationNode* graphEquation)
 {
+	_graphEquation = graphEquation;
 }
 
 GraphManager::GraphManager(GLuint program) : _program(program)
@@ -434,7 +435,7 @@ GraphManager::GraphManager(GLuint program) : _program(program)
 void GraphManager::Draw()
 {
 	// TODO: Implement ordered layering?
-	for (Graph g : _graphs)
+	for (Graph& g : _graphs)
 	{
 		g.Draw();
 	}
@@ -452,9 +453,10 @@ size_t GraphManager::NewGraph(string equation)
 	}
 
 	_curId++;
-	Graph g(_curId, _program, _vars[pos_x].second, _vars[pos_z].second, gEq);
-	g.Generate();
+	Graph g(_curId, _program, _vars[pos_x].second, _vars[pos_z].second);
 	_graphs.push_back(g);
+	_graphs.back().SetEquation(gEq);
+	_graphs.back().Generate();
 
 	return _curId;
 }

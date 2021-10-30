@@ -342,3 +342,6 @@ healthchecksdb
 /ProjectA/ProjectA.vcxproj.filters
 /ProjectA/ProjectA.vcxproj
 /ProjectA/imgui.ini
+/.vscode/launch.json
+/.vscode/imgui.ini
+/.vscode/c_cpp_properties.json
