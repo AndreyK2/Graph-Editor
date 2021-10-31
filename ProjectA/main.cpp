@@ -341,23 +341,10 @@ void keyboard() {
 	}
 }
 
-// TODO: disable when focused on sub window (console)
 //glfw keyboard callback (used for one-press actions)
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	if (action == GLFW_PRESS) {
-		//decrease samples
-		/* TODO: implement per graph via gui
-		if (key == '-') {
-			_graphSamples -= 2;
-			if (_graphSamples == 0) _graphSamples = 1; //limit to minimum 1
-			generate();
-			//increase samples (keep going to crash)
-		} 
-		if (key == '=') {
-			_graphSamples += 2;
-			generate();
-			//reset everything
-		}*/
+	bool* focused = (bool*)glfwGetWindowUserPointer(window);
+	if (action == GLFW_PRESS && *focused) {
 		if (key == 'R') {
 			xang = 0;
 			yang = 0;
@@ -366,10 +353,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			ypos = 0;
 			draw_2d = 1;
 			draw_3d = 1;
-			//2d only
 		}
 		else if (key == '2') {
-			//set perfect position
 			xang = 0;
 			yang = 0;
 			zpos = -20;
@@ -408,23 +393,17 @@ int main(int argc, char const* argv[])
 	initBackends();
 	initImGUI();
 	initGraphEnvironment();
-
-	//generate + buffer graph data
-	//generate();
-
 	
 	GraphManager graphManager(program);
 	Console console(&graphManager);
 	bool show_console = true;
 
-	bool show_demo_window = false; // DELETE
-
-	
+	bool graphFocused;
+	glfwSetWindowUserPointer(window, &graphFocused);
 
 	//main loop
-	//while window open + not escape key
 	while (!glfwGetKey(window, GLFW_KEY_ESCAPE) && !glfwWindowShouldClose(window)) {
-		//clear
+		//clear the screen
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClearColor(0.1, 0.1, 0.1, 1.0);
 		//draw
@@ -435,8 +414,6 @@ int main(int argc, char const* argv[])
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if (show_demo_window)
-			ImGui::ShowDemoWindow(&show_demo_window);
 		if (show_console)
 			console.Draw(&show_console);
 		ImGui::Render();
@@ -444,8 +421,10 @@ int main(int argc, char const* argv[])
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+
+		graphFocused = !console.IsFocused();
 		//keyboard
-		if(!console.IsFocused())
+		if(graphFocused)
 			keyboard();
 	} //end of loop
 
@@ -457,34 +436,3 @@ int main(int argc, char const* argv[])
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }
-
-
-
-
-
-
-
-
-
-
-/*
-void eqdebug()
-{// temporary debugging
-	EquationNode* head = nullptr;
-	std::vector<std::pair<char, double&>> vars;
-	double x = 0, y = 0;
-	std::pair<char, double&> y_var('y', y), x_var('x', x);
-	vars.push_back(y_var); vars.push_back(x_var);
-	bool failed = false;
-	try
-	{
-		head = GenerateEquationTree(" cos(3.14) ", vars);
-	}
-	catch (EquationError err)
-	{
-		std::cout << err.what() << '\n';
-		failed = true;
-	}
-	if (!failed) std::cout << head->Evaluate() << '\n';
-	delete head;
-}*/

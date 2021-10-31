@@ -133,10 +133,10 @@ void Console::ExecCommand(string raw)
 	bool found = false;
 	for (string command : _commands)
 	{
-		if (toUpper(raw).find(command) == 0)
+		if (toUpper(raw).find(command + " ") == 0)
 		{
 			cmd = command;
-			raw.erase(0, cmd.size());
+			raw.erase(0, cmd.size() + 1);
 			found = true;
 		}
 	}
@@ -227,7 +227,7 @@ void Console::ExecCommand(string raw)
 		else if (cargs == 1)
 		{
 			// todo(?): move command descriptions to type?
-			string cmdName = args[0];
+			string cmdName = toUpper(args[0]);
 			if (cmdName == "GRAPH")
 			{
 				_log.push_back("graph [eq]\nGenerates a new 3D graph with equation [eq]");
