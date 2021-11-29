@@ -285,7 +285,7 @@ pair<int, size_t> getFunction(string equation)
 	return {NONE, equation.npos};
 }
 
-Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation) : _id(id), _program(program), 
+Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation = nullptr) : _id(id), _program(program),
 	_x(x), _z(z), _graphEquation(graphEquation)
 {
 	_draw3D = true; _draw2D = true;
@@ -293,13 +293,8 @@ Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* grap
 	_buffer3D1 = NULL; _buffer3D2 = NULL; _buffer2D = NULL;
 }
 
-Graph::~Graph()
-{
-	delete _graphEquation;
-}
-
 //
-// ------ Graph ------
+// ------ Graph Section ------
 //
 
 void Graph::Generate()
@@ -307,7 +302,7 @@ void Graph::Generate()
 	//size of axis & marks
 	int graph_size = 100;
 
-	unsigned int estimatedPolys3D = pow(_samples * 2, 2);
+	unsigned int estimatedPolys3D = pow(_samples * 2 * 4, 2);
 	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
 	position* graph_3d_2 = (position*)malloc(estimatedPolys3D * sizeof(position));
 
@@ -320,7 +315,7 @@ void Graph::Generate()
 	int index = 0;
 	double range = (_samples * _sampleSize);
 	for (_x = -range; _x < range; _x += _sampleSize) {
-		for (_z = -range; _z < range; _z += _sampleSize) {
+		for (_z = -range; _z < range; _z += (_sampleSize)) {
 			graph_3d_1[index].x = (GLfloat)_x;
 			graph_3d_1[index].z = (GLfloat)_z;
 
@@ -425,11 +420,23 @@ void Graph::SetEquation(EquationNode* graphEquation)
 	_graphEquation = graphEquation;
 }
 
+//
+// ------ GraphManager Section ------
+//
+
 GraphManager::GraphManager(GLuint program) : _program(program)
 {
 	_curId = 0;
 	_vars.push_back({ 'x', 0 });
 	_vars.push_back({ 'z', 0 });
+}
+
+GraphManager::~GraphManager()
+{
+	for (pair<size_t, EquationNode*> equation : _graphEquations)
+	{
+		delete equation.second;
+	}
 }
 
 void GraphManager::Draw()
@@ -443,7 +450,9 @@ void GraphManager::Draw()
 
 size_t GraphManager::NewGraph(string equation)
 {
-	EquationNode* gEq = GenerateEquationTree(equation, _vars);
+	EquationNode* eqHead = GenerateEquationTree(equation, _vars);
+	// It's a bit more efficient and safer to manage equation memory here over Graph
+	_graphEquations.push_back({ ++_curId, eqHead });
 
 	size_t pos_x; size_t pos_z;
 	for (size_t i = 0; i < _vars.size(); i++)
@@ -452,10 +461,7 @@ size_t GraphManager::NewGraph(string equation)
 		else if (_vars[i].first == 'z') pos_z = i;
 	}
 
-	_curId++;
-	Graph g(_curId, _program, _vars[pos_x].second, _vars[pos_z].second);
-	_graphs.push_back(g);
-	_graphs.back().SetEquation(gEq);
+	_graphs.push_back({ _curId, _program, _vars[pos_x].second, _vars[pos_z].second, eqHead });
 	_graphs.back().Generate();
 
 	return _curId;

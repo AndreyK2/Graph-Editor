@@ -89,8 +89,7 @@ protected:
 class Graph
 {
 public:
-	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation = nullptr);
-	~Graph();
+	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation);
 
 	void Generate();
 	void Draw();
@@ -115,11 +114,13 @@ class GraphManager
 {
 public:
 	GraphManager(GLuint program);
+	~GraphManager();
 
 	size_t NewGraph(string equation = "0");
 	void Draw();
 private:
 	vector<Graph> _graphs;
+	vector <pair<size_t, EquationNode*>> _graphEquations;
 	vector<pair<char, double>> _vars;
 	size_t _curId;
 	GLuint _program;

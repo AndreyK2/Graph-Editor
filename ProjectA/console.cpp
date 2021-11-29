@@ -133,7 +133,7 @@ void Console::ExecCommand(string raw)
 	bool found = false;
 	for (string command : _commands)
 	{
-		if (toUpper(raw).find(command + " ") == 0)
+		if (toUpper(raw).find(command + " ") == 0 || (toUpper(raw).find(command) == 0 && raw.length() == command.length()))
 		{
 			cmd = command;
 			raw.erase(0, cmd.size() + 1);
