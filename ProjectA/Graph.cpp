@@ -49,7 +49,7 @@ EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& 
 	// Subtraction, division and power care about order! thus we sometimes find in reverse
 
 	pos = findOperator(equation, "+-", true);
-	if (pos != equation.npos) // TODO: put in func?
+	if (pos != equation.npos) 
 	{
 		node = new EquationNode;
 		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
@@ -289,7 +289,7 @@ Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* grap
 	_x(x), _z(z), _graphEquation(graphEquation)
 {
 	_draw3D = true; _draw2D = true;
-	_samples = 30; _sampleSize = 1;
+	_samples = 30;
 	_buffer3D1 = NULL; _buffer3D2 = NULL; _buffer2D = NULL;
 }
 
@@ -297,12 +297,14 @@ Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* grap
 // ------ Graph Section ------
 //
 
-void Graph::Generate()
+void Graph::Generate(double sampleSize)
 {
 	//size of axis & marks
 	int graph_size = 100;
 
-	unsigned int estimatedPolys3D = pow(_samples * 2 * 4, 2);
+	size_t resolution = 4;
+
+	unsigned int estimatedPolys3D = pow(_samples * 2 * resolution, 2);
 	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
 	position* graph_3d_2 = (position*)malloc(estimatedPolys3D * sizeof(position));
 
@@ -313,11 +315,11 @@ void Graph::Generate()
 
 	//generate 3d graph
 	int index = 0;
-	double range = (_samples * _sampleSize);
-	for (_x = -range; _x < range; _x += _sampleSize) {
-		for (_z = -range; _z < range; _z += (_sampleSize)) {
-			graph_3d_1[index].x = (GLfloat)_x;
-			graph_3d_1[index].z = (GLfloat)_z;
+	double range = (_samples * sampleSize);
+	for (_x = -range; _x < range; _x += sampleSize) {
+		for (_z = -range; _z < range; _z += (sampleSize / resolution)) {
+			graph_3d_1[index].x = (GLfloat)(_x / sampleSize);
+			graph_3d_1[index].z = (GLfloat)(_z / sampleSize);
 
 			// TODO: incomplete function domain handling
 			graph_3d_1[index].y = _graphEquation->Evaluate(); 
@@ -327,12 +329,11 @@ void Graph::Generate()
 	}
 	
 	index = 0;
-	for (_z = -range; _z < range; _z += _sampleSize) {
-		for (_x = -range; _x < range; _x += _sampleSize) {
-			graph_3d_2[index].x = (GLfloat)_x;
-			graph_3d_2[index].z = (GLfloat)_z;
+	for (_z = -range; _z < range; _z += sampleSize) {
+		for (_x = -range; _x < range; _x += (sampleSize / resolution)) {
+			graph_3d_2[index].x = (GLfloat)(_x / sampleSize);
+			graph_3d_2[index].z = (GLfloat)(_z / sampleSize);
 
-			// TODO: incomplete function domain handling
 			graph_3d_2[index].y = _graphEquation->Evaluate();
 
 			index++;
@@ -340,16 +341,16 @@ void Graph::Generate()
 	}
 
 	//generate graph_2d
-	index = 0;
-	_z = 0;
-	for (_x = -range; _x < range; _x += _sampleSize) {
-		graph_2d[index].x = (GLfloat)_x;
-		graph_2d[index].z = (GLfloat)_z;
+	//index = 0;
+	//_z = 0;
+	//for (_x = -range; _x < range; _x += sampleSize) {
+	//	graph_2d[index].x = (GLfloat)_x;
+	//	graph_2d[index].z = (GLfloat)_z;
 
-		graph_2d[index].y = _graphEquation->Evaluate();
+	//	graph_2d[index].y = _graphEquation->Evaluate();
 
-		index++;
-	}
+	//	index++;
+	//}
 
 	//buffers for 3d graph
 	glGenBuffers(1, &_buffer3D1);
@@ -370,14 +371,15 @@ void Graph::Generate()
 
 	//console debug
 	// TODO: Replace with logging
-	printf("3D graph generated, samples used: %d\n", _samples * 2);
-	printf("2D graph generated, samples used: %d\n", _samples * 2);
-	int polyCount = (pow(_samples * 2, 2) + _samples * 2);
-	printf("Total number of polygons: %d\n", polyCount);
+	//printf("3D graph generated, samples used: %d\n", _samples * 2);
+	//printf("2D graph generated, samples used: %d\n", _samples * 2);
+	//int polyCount = (pow(_samples * 2, 2) + _samples * 2);
+	//printf("Total number of polygons: %d\n", polyCount);
 }
 
 void Graph::Draw()
 {
+	size_t resolution = 4;
 	GLuint uniform_color = glGetUniformLocation(_program, "color");
 	//allowed to draw?
 	if (_draw3D) {
@@ -387,8 +389,8 @@ void Graph::Draw()
 		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D1);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		for (int i = 0; i < _samples * 2; i++) {
-			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
+		for (int i = 0; i < _samples * 2 * resolution; i++) {
+			glDrawArrays(GL_LINE_STRIP, i * _samples * 2 * resolution, _samples * 2 * resolution);
 		}
 		glDisableVertexAttribArray(0);
 
@@ -398,7 +400,7 @@ void Graph::Draw()
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		for (int i = 0; i < _samples * 2; i++) {
-			glDrawArrays(GL_LINE_STRIP, i * _samples * 2, _samples * 2);
+			glDrawArrays(GL_LINE_STRIP, i * _samples * 2 * resolution, _samples * 2 * resolution);
 		}
 		glDisableVertexAttribArray(0);
 	}
@@ -424,15 +426,29 @@ void Graph::SetEquation(EquationNode* graphEquation)
 // ------ GraphManager Section ------
 //
 
-GraphManager::GraphManager(GLuint program) : _program(program)
+GraphManager::GraphManager(GLuint program, vector<pair<string, void*>>* windowVars) : _program(program)
 {
 	_curId = 0;
 	_vars.push_back({ 'x', 0 });
 	_vars.push_back({ 'z', 0 });
+
+	_graphZoom = nullptr;
+	_curGraphZoom = 1;
+
+	if (windowVars == nullptr) return;
+	for (auto var : *windowVars)
+	{
+		if (var.first == "graphZoom")
+		{
+			_graphZoom = (double*)var.second;
+			_curGraphZoom = *_graphZoom;
+		}
+	}
 }
 
 GraphManager::~GraphManager()
 {
+	// Free equation memory
 	for (pair<size_t, EquationNode*> equation : _graphEquations)
 	{
 		delete equation.second;
@@ -441,6 +457,16 @@ GraphManager::~GraphManager()
 
 void GraphManager::Draw()
 {
+	// Force zoom updates
+	// TODO: Might want to delete this and instead handle the callback in GraphManager
+	if (_curGraphZoom != *_graphZoom)
+	{
+		_curGraphZoom = *_graphZoom;
+		for (Graph& g : _graphs)
+		{
+			g.Generate(exp(_curGraphZoom));
+		}
+	}
 	// TODO: Implement ordered layering?
 	for (Graph& g : _graphs)
 	{
@@ -451,7 +477,7 @@ void GraphManager::Draw()
 size_t GraphManager::NewGraph(string equation)
 {
 	EquationNode* eqHead = GenerateEquationTree(equation, _vars);
-	// It's a bit more efficient and safer to manage equation memory here over Graph
+	// It's a bit more efficient and safe to manage equation memory in here over Graph
 	_graphEquations.push_back({ ++_curId, eqHead });
 
 	size_t pos_x; size_t pos_z;
@@ -462,7 +488,10 @@ size_t GraphManager::NewGraph(string equation)
 	}
 
 	_graphs.push_back({ _curId, _program, _vars[pos_x].second, _vars[pos_z].second, eqHead });
-	_graphs.back().Generate();
+	
+	double sampleSize = 1;
+	if (_graphZoom != nullptr) sampleSize = exp(*_graphZoom);
+	_graphs.back().Generate(sampleSize);
 
 	return _curId;
 }

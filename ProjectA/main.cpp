@@ -13,9 +13,11 @@
 #include "shaders.h"
 
 #include <vector>
+#include <string>
 #include <iostream>
 
 using std::vector;
+using std::string;
 
 #define WINDOWED NULL
 
@@ -42,11 +44,9 @@ GLuint uniform_rotation;
 GLuint uniform_perspective;
 
 
-//number of graph samples to make
-int _graphSamples = 30;
 //size of axis & marks
 int graph_size = 100;
-//scale y axis (because otherwise its between 0-1 while x is -30 to +30)
+//scale y axis
 int graph_y_scale = 50;
 
 //initial position + angle variables for shader
@@ -90,9 +90,12 @@ MessageCallback(GLenum source,
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 void perspective(double fov);
+
+void* getWindowVar(GLFWwindow* window, string varName);
 
 void initBackends()
 {
@@ -108,6 +111,7 @@ void initBackends()
 
 	glfwMakeContextCurrent(window);
 	glfwSetKeyCallback(window, key_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSwapInterval(1); // Enable Vsync
 
@@ -343,8 +347,8 @@ void keyboard() {
 
 //glfw keyboard callback (used for one-press actions)
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	bool* focused = (bool*)glfwGetWindowUserPointer(window);
-	if (action == GLFW_PRESS && *focused) {
+	bool* focused = (bool*)getWindowVar(window, "graphFocused");
+	if (action == GLFW_PRESS && focused != nullptr && *focused) {
 		if (key == 'R') {
 			xang = 0;
 			yang = 0;
@@ -379,13 +383,27 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	double* zoom = (double*)getWindowVar(window, "graphZoom");
+	*zoom += 0.1 * yoffset;
+}
+
 //glfw resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
+void* getWindowVar(GLFWwindow* window, string varName)
+{
+	auto vars = (vector<std::pair<string, void*>>*)glfwGetWindowUserPointer(window);
+	for (std::pair<string, void*> var : *vars)
+	{
+		if (var.first == varName) return var.second;
+	}
+	return nullptr;
+}
 
-//main
 int main(int argc, char const* argv[])
 {
 
@@ -394,12 +412,19 @@ int main(int argc, char const* argv[])
 	initImGUI();
 	initGraphEnvironment();
 	
-	GraphManager graphManager(program);
-	Console console(&graphManager);
 	bool show_console = true;
 
+	vector<std::pair<string, void*>> windowVars;
+	glfwSetWindowUserPointer(window, &windowVars);
 	bool graphFocused;
-	glfwSetWindowUserPointer(window, &graphFocused);
+	windowVars.push_back({ "graphFocused", (void*)&graphFocused });
+
+	double graphZoom = 0;
+	windowVars.push_back({ "graphZoom", (void*)&graphZoom });
+
+	GraphManager graphManager(program, &windowVars);
+	Console console(&graphManager);
+
 
 	//main loop
 	while (!glfwGetKey(window, GLFW_KEY_ESCAPE) && !glfwWindowShouldClose(window)) {

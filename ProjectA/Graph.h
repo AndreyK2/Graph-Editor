@@ -36,7 +36,6 @@ public:
 private:
 	EquationNode* _left;
 	EquationNode* _right;
-	// TODO: Store equation string index for detailed exception handling
 
 	std::function<double(EquationNode* curNode)> _evalFunc;
 };
@@ -91,7 +90,7 @@ class Graph
 public:
 	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation);
 
-	void Generate();
+	void Generate(double sampleSize);
 	void Draw();
 
 	void SetEquation(EquationNode* graphEquation);
@@ -100,7 +99,6 @@ private:
 	EquationNode* _graphEquation;
 	size_t _id;
 	size_t _samples; 
-	double _sampleSize;
 	bool _draw2D; bool _draw3D;
 	GLuint _buffer3D1; 
 	GLuint _buffer3D2;
@@ -113,7 +111,7 @@ private:
 class GraphManager
 {
 public:
-	GraphManager(GLuint program);
+	GraphManager(GLuint program, vector<pair<string, void*>>* windowVars = nullptr);
 	~GraphManager();
 
 	size_t NewGraph(string equation = "0");
@@ -121,7 +119,9 @@ public:
 private:
 	vector<Graph> _graphs;
 	vector <pair<size_t, EquationNode*>> _graphEquations;
-	vector<pair<char, double>> _vars;
+	vector<pair<char, double>> _vars; // x,z,...
+	double* _graphZoom; // The graph zoom is ideally global for all graphs
+	double _curGraphZoom; // for forcing graph updates, might make an array of forced varaibles if needed
 	size_t _curId;
 	GLuint _program;
 };
