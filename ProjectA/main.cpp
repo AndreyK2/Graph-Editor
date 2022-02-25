@@ -386,7 +386,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	double* zoom = (double*)getWindowVar(window, "graphZoom");
-	*zoom += 0.1 * yoffset;
+	*zoom += 0.1 * -yoffset;
 }
 
 //glfw resize

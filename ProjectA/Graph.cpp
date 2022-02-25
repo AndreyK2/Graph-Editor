@@ -304,7 +304,7 @@ void Graph::Generate(double sampleSize)
 
 	size_t resolution = 4;
 
-	unsigned int estimatedPolys3D = pow(_samples * 2 * resolution, 2);
+	unsigned int estimatedPolys3D = ceil(pow(_samples * 2 * resolution, 2));
 	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
 	position* graph_3d_2 = (position*)malloc(estimatedPolys3D * sizeof(position));
 
@@ -315,22 +315,36 @@ void Graph::Generate(double sampleSize)
 
 	//generate 3d graph
 	int index = 0;
-	double range = (_samples * sampleSize);
-	for (_x = -range; _x < range; _x += sampleSize) {
-		for (_z = -range; _z < range; _z += (sampleSize / resolution)) {
+
+	int range = _samples;
+	// The vertices are generated more densly in one axis to make for a smoother graph
+	int smoothRange = _samples * resolution;
+
+	for (int i = -range; i < range; i++)
+	{
+		_x = i * sampleSize;
+		for (int j = -smoothRange; j < smoothRange; j++)
+		{
+			_z = j * sampleSize / resolution;
+
 			graph_3d_1[index].x = (GLfloat)(_x / sampleSize);
 			graph_3d_1[index].z = (GLfloat)(_z / sampleSize);
 
 			// TODO: incomplete function domain handling
-			graph_3d_1[index].y = _graphEquation->Evaluate(); 
+			graph_3d_1[index].y = _graphEquation->Evaluate();
 
 			index++;
 		}
 	}
-	
+
 	index = 0;
-	for (_z = -range; _z < range; _z += sampleSize) {
-		for (_x = -range; _x < range; _x += (sampleSize / resolution)) {
+	for (int i = -range; i < range; i++)
+	{
+		_z = i * sampleSize;
+		for (int j = -smoothRange; j < smoothRange; j++)
+		{
+			_x = j * sampleSize / resolution;
+
 			graph_3d_2[index].x = (GLfloat)(_x / sampleSize);
 			graph_3d_2[index].z = (GLfloat)(_z / sampleSize);
 
@@ -399,7 +413,7 @@ void Graph::Draw()
 		glBindBuffer(GL_ARRAY_BUFFER, _buffer3D2);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		for (int i = 0; i < _samples * 2; i++) {
+		for (int i = 0; i < _samples * 2 * resolution; i++) {
 			glDrawArrays(GL_LINE_STRIP, i * _samples * 2 * resolution, _samples * 2 * resolution);
 		}
 		glDisableVertexAttribArray(0);
