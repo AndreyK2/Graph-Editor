@@ -7,9 +7,11 @@
 #include <utility>
 #include <glew.h>
 
+#define NO_ERR 0
+#define NOT_FOUND 1
+#define HIDE 999999
+
 using std::string; using std::vector; using std::pair;
-
-
 
 //a point in 3d space (used on 2d & 3d graphs)
 struct position {
@@ -39,8 +41,6 @@ private:
 
 	std::function<double(EquationNode* curNode)> _evalFunc;
 };
-
-
 
 
 EquationNode* GenerateEquationTree(string equation, vector<pair<char,double>>& vars, size_t substrIndex = 0); // TODO: static in EquationNode class?
@@ -90,23 +90,22 @@ class Graph
 public:
 	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation);
 
-	void Generate(double sampleSize);
-	void Draw();
+	void Generate(double sampleSize, size_t samples, size_t resolution);
+	void Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer);
 
 	void SetEquation(EquationNode* graphEquation);
 
+	bool show;
+	const size_t id;
+
 private:
 	EquationNode* _graphEquation;
-	size_t _id;
-	size_t _samples; 
-	bool _draw2D; bool _draw3D;
-	GLuint _buffer3D1; 
-	GLuint _buffer3D2;
-	GLuint _buffer2D;
+	GLuint _bufferHorizontalOutlineX; 
+	GLuint _bufferHorizontalOutlineZ;
+	GLuint _bufferGraphSurface;
 	GLuint _program;
 	double& _x; double& _z;
 };
-
 
 class GraphManager
 {
@@ -115,13 +114,20 @@ public:
 	~GraphManager();
 
 	size_t NewGraph(string equation = "0");
+	size_t RemoveGraph(size_t graphId);
+	void generateIndecies();
 	void Draw();
 private:
+	void _DeleteEquation(size_t graphId);
+
 	vector<Graph> _graphs;
-	vector <pair<size_t, EquationNode*>> _graphEquations;
+	vector<pair<size_t, EquationNode*>> _graphEquations;
 	vector<pair<char, double>> _vars; // x,z,...
+	size_t _sampleCount;
+	size_t _resolution;
 	double* _graphZoom; // The graph zoom is ideally global for all graphs
 	double _curGraphZoom; // for forcing graph updates, might make an array of forced varaibles if needed
+	GLuint* _indexBuff;
 	size_t _curId;
 	GLuint _program;
 };

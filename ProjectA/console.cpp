@@ -11,6 +11,7 @@ Console::Console(GraphManager* gm) : _graphManager(gm)
 	_commands.push_back("HISTORY");
 	_commands.push_back("CLEAR");
 	_commands.push_back("GRAPH");
+	_commands.push_back("REMOVE");
 	_autoScroll = true;
 	_scrollToBottom = false;
 	_focused = false;
@@ -192,7 +193,6 @@ void Console::ExecCommand(string raw)
 	}
 
 	// handle commands
-	// todo case insensitive
 	size_t cargs = args.size();
 	if (cmd == "GRAPH")
 	{
@@ -232,14 +232,33 @@ void Console::ExecCommand(string raw)
 			{
 				_log.push_back("graph [eq]\nGenerates a new 3D graph with equation [eq]");
 			}
+			else if (cmdName == "REMOVE")
+			{
+				_log.push_back("remove [id]\nRemoves a graph with id [id]");
+			}
 			else
 			{
-				_log.push_back("Unrecognized command");
+				_log.push_back("Unrecognized command/No Description exists");
 			}
 		}
 		else
 		{
 			_log.push_back("Invalid usage, try: \"help\" for available commands, \"help [command name]\" for command description");
+		}
+	}
+	else if (cmd == "REMOVE")
+	{
+		if (cargs != 1)
+		{
+			_log.push_back("Invalid usage, try: remove [graph id]");
+			return;
+		}
+
+		size_t id = stoi(args[0]);
+		size_t result = _graphManager->RemoveGraph(id);
+		if (result == NOT_FOUND)
+		{
+			_log.push_back("[error] Could not find graph with id " + args[0]);
 		}
 	}
 	else
