@@ -20,12 +20,11 @@ using std::vector;
 using std::string;
 
 #define WINDOWED NULL
+#define PI 3.141
 
 GLFWwindow* window;
 
 // setup -----------------------------------------------------------
-
-
 
 //init gl vars: buffers
 GLuint vertex_array_object;
@@ -117,6 +116,7 @@ void initBackends()
 
 	GLenum err = glewInit();
 
+	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(MessageCallback, 0);
 
@@ -150,6 +150,9 @@ void initGraphEnvironment() {
 	glAttachShader(program, v_shader);
 	glAttachShader(program, f_shader);
 	glLinkProgram(program);
+
+	glDeleteShader(v_shader);
+	glDeleteShader(f_shader);
 
 	//vertex array object state
 	glGenVertexArrays(1, &vertex_array_object);
@@ -249,7 +252,7 @@ void perspective(double fov)
 	float theMatrix[16];
 	memset(theMatrix, 0, sizeof(float) * 16);
 	//build perspective matrix
-	float fFrustumScale = 1 / tan((fov / 2) * (3.141 / 180));
+	float fFrustumScale = 1 / tan((fov / 2) * (PI / 180));
 	theMatrix[0] = fFrustumScale;
 	theMatrix[5] = fFrustumScale;
 	theMatrix[10] = (fzFar + fzNear) / (fzNear - fzFar);
@@ -268,7 +271,6 @@ void perspective(double fov)
 
 //draw function
 void draw(GraphManager& gm) {
-	int i;
 
 	//use our shader program
 	glUseProgram(program);
@@ -431,6 +433,7 @@ int main(int argc, char const* argv[])
 		//clear the screen
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClearColor(0.1, 0.1, 0.1, 1.0);
+		glClear(GL_DEPTH_BUFFER_BIT);
 		//draw
 		draw(graphManager);
 

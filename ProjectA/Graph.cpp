@@ -6,6 +6,7 @@
 #define NON_REPEATING_INDEX_ROWS 2
 #define DUPLICATE_INDECIES 2
 #define VERTEX_DIMENSIONS 3
+#define Z_FIGHTING_FIX 0.1
 
 EquationNode::EquationNode(EquationNode* left, EquationNode* right)
 	: _left(left), _right(right)
@@ -266,8 +267,6 @@ char upper(char c)
 	return c;
 }
 
-
-
 pair<int, size_t> getFunction(string equation)
 {
 	void* func = nullptr;
@@ -298,22 +297,47 @@ Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* grap
 	_x(x), _z(z), _graphEquation(graphEquation)
 {
 	show = true;
-	_bufferHorizontalOutlineZ = NULL; _bufferHorizontalOutlineX = NULL; _bufferGraphSurface = NULL;
+	_bufferHorizontalOutlineZupper = NULL; _bufferHorizontalOutlineXupper = NULL; _bufferGraphSurface = NULL;
+	_bufferHorizontalOutlineZlower = NULL; _bufferHorizontalOutlineXlower = NULL;
 }
 
+/*
+Generates and binds the vertices of the graph surface and graph outlines
+*/
 void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 {
 	unsigned int estimatedPolys3D = pow(sampleCount * resolution * GRAPH_SIDES, 2);
+	
+	size_t bufferSize = estimatedPolys3D * sizeof(position);
+	
 	// TODO: change to new/delete?
-	position* graph_3d_1 = (position*)malloc(estimatedPolys3D * sizeof(position));
-	position* graph_3d_2 = (position*)malloc(estimatedPolys3D * sizeof(position));
-	position* graph_3d = (position*)malloc(estimatedPolys3D * sizeof(position));
+	position* graphOutlineZupper = (position*)malloc(bufferSize);
+	position* graphOutlineZlower = (position*)malloc(bufferSize);
+	position* graphOutlineXupper = (position*)malloc(bufferSize);
+	position* graphOutlineXlower = (position*)malloc(bufferSize);
+	position* graphSurface = (position*)malloc(bufferSize);
 
 	int index = 0;
 	int range = sampleCount;
-	// The vertices are generated more densly in one axis to make for a smoother graph
 	int smoothRange = sampleCount * resolution;
 
+	for (int i = -smoothRange; i < smoothRange; i++)
+	{
+		_z = i * sampleSize / resolution;
+		for (int j = -smoothRange; j < smoothRange; j++)
+		{
+			_x = j * sampleSize / resolution;
+
+			graphSurface[index].x = (GLfloat)(_x / sampleSize);
+			graphSurface[index].z = (GLfloat)(_z / sampleSize);
+
+			graphSurface[index].y = _graphEquation->Evaluate();
+
+			index++;
+		}
+	}
+
+	index = 0;
 	for (int i = -range; i < range; i++)
 	{
 		_x = i * sampleSize;
@@ -321,10 +345,15 @@ void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 		{
 			_z = j * sampleSize / resolution;
 
-			graph_3d_1[index].x = (GLfloat)(_x / sampleSize);
-			graph_3d_1[index].z = (GLfloat)(_z / sampleSize);
+			graphOutlineZupper[index].x = (GLfloat)(_x / sampleSize);
+			graphOutlineZupper[index].z = (GLfloat)(_z / sampleSize);
+			graphOutlineZlower[index].x = graphOutlineZupper[index].x;
+			graphOutlineZlower[index].z = graphOutlineZupper[index].z;
 
-			graph_3d_1[index].y = _graphEquation->Evaluate();
+			// The outlines can't be placed directly on the graph due to Z fightning.
+			// TODO: scale the polygon seperation by the graph zoom?
+			graphOutlineZupper[index].y = _graphEquation->Evaluate() + Z_FIGHTING_FIX;
+			graphOutlineZlower[index].y = graphOutlineZupper[index].y - (2 * Z_FIGHTING_FIX);
 
 			index++;
 		}
@@ -338,57 +367,33 @@ void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 		{
 			_x = j * sampleSize / resolution;
 
-			graph_3d_2[index].x = (GLfloat)(_x / sampleSize);
-			graph_3d_2[index].z = (GLfloat)(_z / sampleSize);
+			graphOutlineXupper[index].x = (GLfloat)(_x / sampleSize);
+			graphOutlineXupper[index].z = (GLfloat)(_z / sampleSize);
+			graphOutlineXlower[index].x = graphOutlineXupper[index].x;
+			graphOutlineXlower[index].z = graphOutlineXupper[index].z;
 
-			graph_3d_2[index].y = _graphEquation->Evaluate();
-
-			index++;
-		}
-	}
-
-	// Temporary buffer for triangles
-	index = 0;
-	for (int i = -smoothRange; i < smoothRange; i++)
-	{
-		_z = i * sampleSize / resolution;
-		for (int j = -smoothRange; j < smoothRange; j++)
-		{
-			_x = j * sampleSize / resolution;
-
-			graph_3d[index].x = (GLfloat)(_x / sampleSize);
-			graph_3d[index].z = (GLfloat)(_z / sampleSize);
-
-			graph_3d[index].y = _graphEquation->Evaluate();
+			graphOutlineXupper[index].y = _graphEquation->Evaluate() + Z_FIGHTING_FIX;
+			graphOutlineXlower[index].y = graphOutlineXupper[index].y - (2 * Z_FIGHTING_FIX);
 
 			index++;
 		}
 	}
 
-	
-
-	//buffers for 3d graph
-	glGenBuffers(1, &_bufferHorizontalOutlineZ);
-	glBindBuffer(GL_ARRAY_BUFFER, _bufferHorizontalOutlineZ);
-	glBufferData(GL_ARRAY_BUFFER, estimatedPolys3D * sizeof(position), graph_3d_1, GL_STATIC_DRAW);
-	glGenBuffers(1, &_bufferHorizontalOutlineX);
-	glBindBuffer(GL_ARRAY_BUFFER, _bufferHorizontalOutlineX);
-	glBufferData(GL_ARRAY_BUFFER, estimatedPolys3D * sizeof(position), graph_3d_2, GL_STATIC_DRAW);
-	glGenBuffers(1, &_bufferGraphSurface);
-	glBindBuffer(GL_ARRAY_BUFFER, _bufferGraphSurface);
-	glBufferData(GL_ARRAY_BUFFER, estimatedPolys3D * sizeof(position), graph_3d, GL_STATIC_DRAW);
-
-	free(graph_3d_1);
-	free(graph_3d_2);
-	free(graph_3d);
-
+	//Bind buffers to OpenGL
+	bindVertexBuffer(_bufferHorizontalOutlineZupper, graphOutlineZupper, bufferSize);
+	bindVertexBuffer(_bufferHorizontalOutlineZlower, graphOutlineZlower, bufferSize);
+	bindVertexBuffer(_bufferHorizontalOutlineXupper, graphOutlineXupper, bufferSize);
+	bindVertexBuffer(_bufferHorizontalOutlineXlower, graphOutlineXlower, bufferSize);
+	bindVertexBuffer(_bufferGraphSurface, graphSurface, bufferSize);
 }
 
+/*
+Draws the graph surface and outlines
+*/
 void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer)
 {
 	GLuint uniform_color = glGetUniformLocation(_program, "color");
 	size_t vertexCount = sampleCount * resolution * GRAPH_SIDES;
-
 
 	size_t triangleVertexCount = (pow(vertexCount + DUPLICATE_INDECIES, 2) * INDEX_REPEATS) - NON_REPEATING_INDEX_ROWS * vertexCount;
 	glUniform4f(uniform_color, 0, 0, 0.3, 0.1);
@@ -398,33 +403,37 @@ void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer)
 	glDrawElements(GL_TRIANGLE_STRIP, triangleVertexCount, GL_UNSIGNED_INT, (void*)indexBuffer);
 	glDisableVertexAttribArray(0);
 
+	vector<GLuint> outlineBuffers = { _bufferHorizontalOutlineZupper, _bufferHorizontalOutlineZlower,
+		_bufferHorizontalOutlineXlower, _bufferHorizontalOutlineXupper };
 
-	//color for 3d graph pt 1
-	glUniform4f(uniform_color, 1, 0.5, 0.1, 1);
-	// graph
-	glBindBuffer(GL_ARRAY_BUFFER, _bufferHorizontalOutlineZ);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, VERTEX_DIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
-	for (int i = 0; i < vertexCount; i++) {
-		glDrawArrays(GL_LINE_STRIP, i * vertexCount, vertexCount);
+	for (int i = 0; i < outlineBuffers.size(); i++)
+	{
+		// color for Z outlines
+		if (i == 0) glUniform4f(uniform_color, 1, 0.5, 0.1, 1);
+		// color for X outlines
+		else if (i == 2) glUniform4f(uniform_color, 1, 0, 0, 1);
+
+		glBindBuffer(GL_ARRAY_BUFFER, outlineBuffers[i]);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, VERTEX_DIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
+		for (int j = 0; j < vertexCount; j++) {
+			glDrawArrays(GL_LINE_STRIP, j * vertexCount, vertexCount);
+		}
+		glDisableVertexAttribArray(0);
 	}
-	glDisableVertexAttribArray(0);
-
-	//color for 3d graph pt 2
-	glUniform4f(uniform_color, 1, 0, 0, 1);
-	glBindBuffer(GL_ARRAY_BUFFER, _bufferHorizontalOutlineX);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, VERTEX_DIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
-	for (int i = 0; i < vertexCount; i++) {
-		glDrawArrays(GL_LINE_STRIP, i * vertexCount, vertexCount);
-	}
-	glDisableVertexAttribArray(0);
-
 }
 
 void Graph::SetEquation(EquationNode* graphEquation)
 {
 	_graphEquation = graphEquation;
+}
+
+void Graph::bindVertexBuffer(GLuint& GLbuffer, position* vertexBuffer, size_t size)
+{
+	glGenBuffers(1, &GLbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, GLbuffer);
+	glBufferData(GL_ARRAY_BUFFER, size, vertexBuffer, GL_STATIC_DRAW);
+	free(vertexBuffer);
 }
 
 //
@@ -535,10 +544,14 @@ size_t GraphManager::RemoveGraph(size_t graphId)
 	return NOT_FOUND;
 }
 
+/*
+Generates triangle indicies for the vertices of the graph surface
+This is in GraphManager because the resolution and sample count are uniform for all graphs, and thus so are the indecies
+*/
 void GraphManager::generateIndecies()
 {
 	// The Indecies are a bit wider than the graph. This is because we need to generate "degenerate" triangles (with area 0) which
-	// won't be drawn by opengl, so that we can render all the triangles in one strip that has cuts at the edges of the graph.
+	// won't be drawn by opengl, so that we can render all the triangles in one strip that is cut at the edges of the graph.
 	// We do this by adding duplicate indecies at the edges.
 	// Note: We add 2 duplicate indecies per row, to perserve the orientation of the triangles by keeping the index count even.
 	delete _indexBuff;

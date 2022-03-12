@@ -99,9 +99,13 @@ public:
 	const size_t id;
 
 private:
+	void bindVertexBuffer(GLuint& GLbuffer, position* vertexBuffer, size_t size);
+
 	EquationNode* _graphEquation;
-	GLuint _bufferHorizontalOutlineX; 
-	GLuint _bufferHorizontalOutlineZ;
+	GLuint _bufferHorizontalOutlineXupper;
+	GLuint _bufferHorizontalOutlineXlower;
+	GLuint _bufferHorizontalOutlineZupper;
+	GLuint _bufferHorizontalOutlineZlower;
 	GLuint _bufferGraphSurface;
 	GLuint _program;
 	double& _x; double& _z;
