@@ -6,7 +6,6 @@
 #define NON_REPEATING_INDEX_ROWS 2
 #define DUPLICATE_INDECIES 2
 #define VERTEX_DIMENSIONS 3
-#define Z_FIGHTING_FIX 0.1
 
 EquationNode::EquationNode(EquationNode* left, EquationNode* right)
 	: _left(left), _right(right)
@@ -337,6 +336,8 @@ void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 		}
 	}
 
+	const GLfloat zFightningFix = 0.1;
+
 	index = 0;
 	for (int i = -range; i < range; i++)
 	{
@@ -352,8 +353,8 @@ void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 
 			// The outlines can't be placed directly on the graph due to Z fightning.
 			// TODO: scale the polygon seperation by the graph zoom?
-			graphOutlineZupper[index].y = _graphEquation->Evaluate() + Z_FIGHTING_FIX;
-			graphOutlineZlower[index].y = graphOutlineZupper[index].y - (2 * Z_FIGHTING_FIX);
+			graphOutlineZupper[index].y = _graphEquation->Evaluate() + zFightningFix;
+			graphOutlineZlower[index].y = graphOutlineZupper[index].y - (2 * zFightningFix);
 
 			index++;
 		}
@@ -372,8 +373,8 @@ void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 			graphOutlineXlower[index].x = graphOutlineXupper[index].x;
 			graphOutlineXlower[index].z = graphOutlineXupper[index].z;
 
-			graphOutlineXupper[index].y = _graphEquation->Evaluate() + Z_FIGHTING_FIX;
-			graphOutlineXlower[index].y = graphOutlineXupper[index].y - (2 * Z_FIGHTING_FIX);
+			graphOutlineXupper[index].y = _graphEquation->Evaluate() + zFightningFix;
+			graphOutlineXlower[index].y = graphOutlineXupper[index].y - (2 * zFightningFix);
 
 			index++;
 		}
@@ -393,10 +394,17 @@ Draws the graph surface and outlines
 void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer)
 {
 	GLuint uniform_color = glGetUniformLocation(_program, "color");
-	size_t vertexCount = sampleCount * resolution * GRAPH_SIDES;
+	size_t const vertexCount = sampleCount * resolution * GRAPH_SIDES;
+
+	GLfloat const graphAlpha = 0.5;
+
+	// Enable color grading for the graph
+	// TODO: make the gradient and the coloring customizable
+	GLuint uniform_isGradient = glGetUniformLocation(_program, "isGradient");
+	glUniform1i(uniform_isGradient, true);
 
 	size_t triangleVertexCount = (pow(vertexCount + DUPLICATE_INDECIES, 2) * INDEX_REPEATS) - NON_REPEATING_INDEX_ROWS * vertexCount;
-	glUniform4f(uniform_color, 0, 0, 0.3, 0.1);
+	glUniform4f(uniform_color, 0.1, 0.1, 0.3, graphAlpha);
 	glBindBuffer(GL_ARRAY_BUFFER, _bufferGraphSurface);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, VERTEX_DIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
@@ -421,6 +429,9 @@ void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer)
 		}
 		glDisableVertexAttribArray(0);
 	}
+
+	// Revert shader changes
+	glUniform1i(uniform_isGradient, false);
 }
 
 void Graph::SetEquation(EquationNode* graphEquation)
