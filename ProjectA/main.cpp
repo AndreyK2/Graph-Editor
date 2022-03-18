@@ -41,7 +41,7 @@ GLuint uniform_angle;
 GLuint uniform_color;
 GLuint uniform_rotation;
 GLuint uniform_perspective;
-
+GLuint uniform_isGradient;
 
 //size of axis & marks
 int graph_size = 100;
@@ -55,12 +55,6 @@ float zpos = -40;
 float xang = 0;
 float yang = 0;
 double fov = 90;
-
-//do we draw 2d, 3d?
-int draw_2d = 1;
-int draw_3d = 1;
-
-
 
 //axis
 struct position axis[6];
@@ -118,6 +112,11 @@ void initBackends()
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_DEBUG_OUTPUT);
+
+	// Enable alpha channel for the graphs
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glDebugMessageCallback(MessageCallback, 0);
 
 }
@@ -163,6 +162,9 @@ void initGraphEnvironment() {
 	uniform_angle = glGetUniformLocation(program, "angle");
 	uniform_color = glGetUniformLocation(program, "color");
 	uniform_perspective = glGetUniformLocation(program, "perspective");
+	uniform_isGradient = glGetUniformLocation(program, "isGradient");
+
+	glUniform1i(uniform_isGradient, false);
 
 	//setup perspective
 	perspective(fov);
@@ -357,8 +359,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			zpos = -40;
 			xpos = 0;
 			ypos = 0;
-			draw_2d = 1;
-			draw_3d = 1;
 		}
 		else if (key == '2') {
 			xang = 0;
@@ -366,21 +366,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			zpos = -20;
 			xpos = 0;
 			ypos = -20;
-			draw_2d = 1;
-			draw_3d = 0;
-		}
-		//3d only
-        else if( key == '3' ) {
-            draw_3d = 1;
-            draw_2d = 0;
-        //both 2d + 3d
-        } else if( key == '1' ) {
-            draw_3d = 1;
-            draw_2d = 1;
-        //neither, axis only
-        } else if( key == '0' ) {
-            draw_3d = 0;
-            draw_2d = 0;
 		}
 	}
 }

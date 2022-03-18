@@ -8,6 +8,7 @@ uniform vec3 offset;\
 uniform mat4 perspective;\
 uniform vec2 angle;\
 uniform vec4 color;\
+uniform bool isGradient;\
 smooth out vec4 theColor;\
 void main(){\
   mat4 xRMatrix = mat4(cos(angle.x), 0.0, sin(angle.x), 0.0,\
@@ -21,7 +22,8 @@ void main(){\
   vec4 rotatedPosition = vec4( position.xyz, 1.0f ) * xRMatrix * yRMatrix;\
   vec4 cameraPos = rotatedPosition + vec4(offset.x, offset.y, offset.z, 0.0);\
   gl_Position = perspective * cameraPos;\
-  theColor = mix( vec4( color.x, color.y, color.z, color.w ), vec4( 0.0f, color.y, color.z, color.w ), position.y / 50 );\
+  if (isGradient) theColor = mix( vec4( color.x, color.y, color.z, color.a ), vec4( 0.0f, 0.0f, 0.0f, color.a ), position.y / 50 );\
+  else theColor = vec4(color.x, color.y, color.z, color.a);\
 }";
 
 // defualt fragment shader
@@ -32,3 +34,4 @@ out vec4 outputColor;\
 void main(){\
   outputColor = theColor;\
 }";
+
