@@ -391,12 +391,10 @@ void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 /*
 Draws the graph surface and outlines
 */
-void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer)
+void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, GraphProperties properties)
 {
 	GLuint uniform_color = glGetUniformLocation(_program, "color");
 	size_t const vertexCount = sampleCount * resolution * GRAPH_SIDES;
-
-	GLfloat const graphAlpha = 0.5;
 
 	// Enable color grading for the graph
 	// TODO: make the gradient and the coloring customizable
@@ -404,7 +402,7 @@ void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer)
 	glUniform1i(uniform_isGradient, true);
 
 	size_t triangleVertexCount = (pow(vertexCount + DUPLICATE_INDECIES, 2) * INDEX_REPEATS) - NON_REPEATING_INDEX_ROWS * vertexCount;
-	glUniform4f(uniform_color, 0.1, 0.1, 0.3, graphAlpha);
+	glUniform4f(uniform_color, properties._sufColor.x, properties._sufColor.y, properties._sufColor.z, properties._sufColor.w);
 	glBindBuffer(GL_ARRAY_BUFFER, _bufferGraphSurface);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, VERTEX_DIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
@@ -417,9 +415,9 @@ void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer)
 	for (int i = 0; i < outlineBuffers.size(); i++)
 	{
 		// color for Z outlines
-		if (i == 0) glUniform4f(uniform_color, 1, 0.5, 0.1, 1);
+		if (i == 0) glUniform4f(uniform_color, properties._outlineColorZ.x, properties._outlineColorZ.y, properties._outlineColorZ.z, properties._outlineColorZ.w);
 		// color for X outlines
-		else if (i == 2) glUniform4f(uniform_color, 1, 0, 0, 1);
+		else if (i == 2) glUniform4f(uniform_color, properties._outlineColorX.x, properties._outlineColorX.y, properties._outlineColorX.z, properties._outlineColorX.w);
 
 		glBindBuffer(GL_ARRAY_BUFFER, outlineBuffers[i]);
 		glEnableVertexAttribArray(0);
@@ -488,6 +486,11 @@ GraphManager::~GraphManager()
 
 void GraphManager::Draw()
 {
+	for (GraphEditor& e : _graphEditors)
+	{
+		e.Draw();
+	}
+
 	// Force zoom updates
 	// TODO: Might want to delete this and instead handle the zoom callback itself in GraphManager
 	if (_curGraphZoom != *_graphZoom)
@@ -502,7 +505,12 @@ void GraphManager::Draw()
 	// TODO: Implement ordered layering?
 	for (Graph& g : _graphs)
 	{
-		if (g.show) g.Draw(_sampleCount, _resolution, _indexBuff);
+		GraphProperties prop;
+		for (GraphEditor& editor : _graphEditors)
+		{
+			if (editor.id == g.id) prop = editor._prop;
+		}
+		if (g.show) g.Draw(_sampleCount, _resolution, _indexBuff, prop);
 	}
 }
 
@@ -522,7 +530,6 @@ void GraphManager::_DeleteEquation(size_t graphId)
 size_t GraphManager::NewGraph(string equation)
 {
 	EquationNode* eqHead = GenerateEquationTree(equation, _vars);
-	// It's a bit more efficient and safe to manage equation memory in here over Graph
 	_graphEquations.push_back({ ++_curId, eqHead });
 
 	size_t pos_x; size_t pos_z;
@@ -537,6 +544,10 @@ size_t GraphManager::NewGraph(string equation)
 	double sampleSize = 1;
 	if (_graphZoom != nullptr) sampleSize = exp(*_graphZoom);
 	_graphs.back().Generate(sampleSize, _sampleCount, _resolution);
+
+	// Create new editor window
+	GraphEditor e(_curId);
+	_graphEditors.push_back(e);
 
 	return _curId;
 }
@@ -596,3 +607,79 @@ void GraphManager::generateIndecies()
 	}
 }
 
+GraphEditor::GraphEditor(size_t graphId) : id(graphId)
+{
+	_prop._equation = "";
+	_prop._gradingIntensity = 1;
+	_prop._sufColor = ImVec4(0.5f, 0.5f, 0.9f, 0.7f);
+	_prop._outlineColorX = ImVec4(0.8f, 0.8f, 1.0f, 1.0f);
+	_prop._outlineColorX = ImVec4(1.0f, 0.8f, 0.8f, 1.0f);
+	_open = true;
+}
+
+void GraphEditor::Draw()
+{
+	// TODO: Set to the right of the screen
+	ImGui::SetNextWindowPos(ImVec2(1000, 200), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+
+	string windowName = "Graph " + std::to_string((unsigned int)id);
+	const char* wName = windowName.c_str();
+	if (!ImGui::Begin(wName, &_open))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGuiColorEditFlags flags = 0;
+	flags |= ImGuiColorEditFlags_AlphaBar;
+	//flags |= ImGuiColorEditFlags_NoSidePreview;
+	flags |= ImGuiColorEditFlags_PickerHueBar;
+	//flags |= ImGuiColorEditFlags_PickerHueWheel;
+	flags |= ImGuiColorEditFlags_NoInputs;       // Disable all RGB/HSV/Hex displays
+
+
+	bool open_popup = ImGui::ColorButton("MyColor##3b", _prop._sufColor, flags);
+	ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+	open_popup |= ImGui::Button("Surface Color");
+	if (open_popup)
+	{
+		ImGui::OpenPopup("color picker 1");
+	}
+	if (ImGui::BeginPopup("color picker 1"))
+	{
+		ImGui::Separator();
+		ImGui::ColorPicker4("Surface Color##4", (float*)&_prop._sufColor, flags); // TODO: implement for outlines aswell
+		ImGui::EndPopup();
+	}
+
+	open_popup = ImGui::ColorButton("MyColor##3b", _prop._outlineColorX, flags);
+	ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+	open_popup |= ImGui::Button("X Outline Color");
+	if (open_popup)
+	{
+		ImGui::OpenPopup("color picker 2");
+	}
+	if (ImGui::BeginPopup("color picker 2"))
+	{
+		ImGui::Separator();
+		ImGui::ColorPicker4("X Outline##4", (float*)&_prop._outlineColorX, flags); // TODO: implement for outlines aswell
+		ImGui::EndPopup();
+	}
+
+	open_popup = ImGui::ColorButton("MyColor##3b", _prop._outlineColorZ, flags);
+	ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+	open_popup |= ImGui::Button("Z Outline Color");
+	if (open_popup)
+	{
+		ImGui::OpenPopup("color picker 3");
+	}
+	if (ImGui::BeginPopup("color picker 3"))
+	{
+		ImGui::Separator();
+		ImGui::ColorPicker4("Z Outline##4", (float*)&_prop._outlineColorZ, flags); // TODO: implement for outlines aswell
+		ImGui::EndPopup();
+	}
+
+	ImGui::End();
+}

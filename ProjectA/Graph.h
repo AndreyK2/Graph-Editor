@@ -7,6 +7,8 @@
 #include <utility>
 #include <glew.h>
 
+#include <imgui.h>
+
 #define NO_ERR 0
 #define NOT_FOUND 1
 #define HIDE 999999
@@ -51,6 +53,7 @@ char upper(char c);
 pair<int, size_t> getFunction(string equation);
 
 
+
 // TODO: move func and func names to a structure?
 enum mathFunctions
 {
@@ -85,13 +88,35 @@ protected:
 	size_t _index;
 };
 
+struct GraphProperties
+{
+	ImVec4 _sufColor;
+	ImVec4 _outlineColorX;
+	ImVec4 _outlineColorZ;
+	double _gradingIntensity;
+	string _equation;
+};
+
+class GraphEditor
+{
+public:
+	GraphEditor(size_t graphId);
+	void Draw();
+
+	size_t id;
+	GraphProperties _prop;
+
+private:
+	bool _open;
+};
+
 class Graph
 {
 public:
 	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation);
 
 	void Generate(double sampleSize, size_t samples, size_t resolution);
-	void Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer);
+	void Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, GraphProperties properties);
 
 	void SetEquation(EquationNode* graphEquation);
 
@@ -126,6 +151,7 @@ private:
 
 	vector<Graph> _graphs;
 	vector<pair<size_t, EquationNode*>> _graphEquations;
+	vector<GraphEditor> _graphEditors;
 	vector<pair<char, double>> _vars; // x,z,...
 	size_t _sampleCount;
 	size_t _resolution;
@@ -135,3 +161,6 @@ private:
 	size_t _curId;
 	GLuint _program;
 };
+
+
+

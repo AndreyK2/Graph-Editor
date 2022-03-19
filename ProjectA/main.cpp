@@ -282,7 +282,7 @@ void draw(GraphManager& gm) {
 	glUniform2f(uniform_angle, xang, yang);
 
 	//color for axis (green)
-	glUniform4f(uniform_color, 0, 1, 0, 1);
+	glUniform4f(uniform_color, 0.3f, 0.4f, 0.7f, 1.0f);
 	//draw axis
 	glBindBuffer(GL_ARRAY_BUFFER, buffer_axis);
 	glEnableVertexAttribArray(0);
@@ -339,6 +339,8 @@ void keyboard() {
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
 		yang = yang + 0.025;
 	}
+	// fov, is it needed?
+	/*
 	if (glfwGetKey(window, 'P') == GLFW_PRESS && fov < 180) {
 		fov += 0.2;
 		perspective(fov);
@@ -346,7 +348,7 @@ void keyboard() {
 	if (glfwGetKey(window, 'O') == GLFW_PRESS && fov > 30) {
 		fov -= 0.2;
 		perspective(fov);
-	}
+	}*/
 }
 
 //glfw keyboard callback (used for one-press actions)
@@ -400,6 +402,7 @@ int main(int argc, char const* argv[])
 	initGraphEnvironment();
 	
 	bool show_console = true;
+	bool show_demo = false;
 
 	vector<std::pair<string, void*>> windowVars;
 	glfwSetWindowUserPointer(window, &windowVars);
@@ -419,13 +422,14 @@ int main(int argc, char const* argv[])
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClearColor(0.1, 0.1, 0.1, 1.0);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		//draw
-		draw(graphManager);
 
-		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		//draw
+		draw(graphManager);
+
+		//ImGui::ShowDemoWindow(&show_demo);
 
 		if (show_console)
 			console.Draw(&show_console);
