@@ -38,7 +38,7 @@ bool Console::IsFocused()
 void Console::Draw(bool* p_open)
 {
 	ImGui::SetNextWindowPos(ImVec2(0, 200), ImGuiCond_FirstUseEver); // TODO: Set below top bar
-	ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(300, 600), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin("Graph Editing Console", p_open))
 	{
 		ImGui::End();
@@ -121,7 +121,6 @@ void Console::Draw(bool* p_open)
 	if (reclaim_keyboard_focus)
 		ImGui::SetKeyboardFocusHere(-1); // Auto focus previous widget
 	
-
 	ImGui::End();
 }
 
@@ -284,4 +283,3 @@ string toUpper(string s)
 	}
 	return s;
 }
-
