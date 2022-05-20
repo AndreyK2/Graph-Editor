@@ -16,6 +16,7 @@
 using std::string; using std::vector; using std::pair;
 
 //a point in 3d space (used on 2d & 3d graphs)
+// TODO: Rename to vec3?
 struct position {
 	GLfloat x;
 	GLfloat y;
@@ -162,5 +163,5 @@ private:
 	GLuint _program;
 };
 
-
+position triangleSurfaceNormal(position vertice1, position vertice2, position vertice3);
 

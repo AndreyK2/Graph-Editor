@@ -6,6 +6,7 @@
 #define NON_REPEATING_INDEX_ROWS 2
 #define DUPLICATE_INDECIES 2
 #define VERTEX_DIMENSIONS 3
+#define TRIANGLE_VERTICES 3
 
 EquationNode::EquationNode(EquationNode* left, EquationNode* right)
 	: _left(left), _right(right)
@@ -288,6 +289,7 @@ pair<int, size_t> getFunction(string equation)
 	return {NONE, equation.npos};
 }
 
+
 //
 // ------ Graph Section ------
 //
@@ -315,6 +317,7 @@ void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 	position* graphOutlineXupper = (position*)malloc(bufferSize);
 	position* graphOutlineXlower = (position*)malloc(bufferSize);
 	position* graphSurface = (position*)malloc(bufferSize);
+	position* graphSurfaceNormals = (position*)malloc(bufferSize);
 
 	int index = 0;
 	int range = sampleCount;
@@ -397,11 +400,10 @@ void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, Gra
 	size_t const vertexCount = sampleCount * resolution * GRAPH_SIDES;
 
 	// Enable color grading for the graph
-	// TODO: make the gradient and the coloring customizable
 	GLuint uniform_isGradient = glGetUniformLocation(_program, "isGradient");
 	glUniform1i(uniform_isGradient, true);
 
-	size_t triangleVertexCount = (pow(vertexCount + DUPLICATE_INDECIES, 2) * INDEX_REPEATS) - NON_REPEATING_INDEX_ROWS * vertexCount;
+	size_t triangleVertexCount = (pow(vertexCount + DUPLICATE_INDECIES, GRAPH_SIDES) * INDEX_REPEATS) - NON_REPEATING_INDEX_ROWS * vertexCount;
 	glUniform4f(uniform_color, properties._sufColor.x, properties._sufColor.y, properties._sufColor.z, properties._sufColor.w);
 	glBindBuffer(GL_ARRAY_BUFFER, _bufferGraphSurface);
 	glEnableVertexAttribArray(0);
@@ -554,16 +556,29 @@ size_t GraphManager::NewGraph(string equation)
 
 size_t GraphManager::RemoveGraph(size_t graphId)
 {
+	size_t result = NOT_FOUND;
+
 	for (vector<Graph>::iterator it = _graphs.begin(); it != _graphs.end(); ++it)
 	{
 		if (it->id == graphId)
 		{
 			it->show = false;
 			_DeleteEquation(graphId);
-			return NO_ERR;
+			result = NO_ERR;
+		}
+
+	}
+
+	for (vector<GraphEditor>::iterator it = _graphEditors.begin(); it != _graphEditors.end(); ++it)
+	{
+		if (it->id == graphId)
+		{
+			_graphEditors.erase(it);
+			break;
 		}
 	}
-	return NOT_FOUND;
+
+	return result;
 }
 
 /*
@@ -576,12 +591,14 @@ void GraphManager::generateIndecies()
 	// won't be drawn by opengl, so that we can render all the triangles in one strip that is cut at the edges of the graph.
 	// We do this by adding duplicate indecies at the edges.
 	// Note: We add 2 duplicate indecies per row, to perserve the orientation of the triangles by keeping the index count even.
+
 	delete _indexBuff;
-	GLuint estimatedIndecies = pow((_sampleCount * _resolution * GRAPH_SIDES) + DUPLICATE_INDECIES, 2) * INDEX_REPEATS;
+
+	GLuint graphWidth = _sampleCount * _resolution * GRAPH_SIDES;
+	GLuint estimatedIndecies = pow((graphWidth) + DUPLICATE_INDECIES, 2) * INDEX_REPEATS;
 	_indexBuff = (GLuint*)malloc(estimatedIndecies * sizeof(GLuint));
 
 	//Index buffer for triangle elements
-	GLuint graphWidth = _sampleCount * _resolution * 2;
 	unsigned int index = 0;
 	int j = 0;
 	for (int i = 0; i < graphWidth - 1; i++)
@@ -591,7 +608,7 @@ void GraphManager::generateIndecies()
 		_indexBuff[index] = (i * graphWidth) + j;
 		index++;
 
-		// Real triangle indexies
+		// Real triangle indecies
 		for (; j < graphWidth; j++)
 		{
 			_indexBuff[index] = (i * graphWidth) + j;
@@ -613,7 +630,7 @@ GraphEditor::GraphEditor(size_t graphId) : id(graphId)
 	_prop._gradingIntensity = 1;
 	_prop._sufColor = ImVec4(0.5f, 0.5f, 0.9f, 0.7f);
 	_prop._outlineColorX = ImVec4(0.8f, 0.8f, 1.0f, 1.0f);
-	_prop._outlineColorX = ImVec4(1.0f, 0.8f, 0.8f, 1.0f);
+	_prop._outlineColorZ = ImVec4(1.0f, 0.8f, 0.8f, 1.0f);
 	_open = true;
 }
 
