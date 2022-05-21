@@ -138,6 +138,9 @@ public:
 	void UpdateEquation(size_t graphId, string equation);
 	void generateIndecies();
 	void Draw();
+
+	bool _focused;
+
 private:
 	void _DeleteEquation(size_t graphId);
 
@@ -161,6 +164,7 @@ public:
 	GraphEditor(size_t graphId, GraphManager* graphManager, string equation = "");
 	void Draw();
 	int TextEditCallback(ImGuiInputTextCallbackData* data);
+	
 
 	size_t id;
 	GraphProperties _prop;
@@ -170,6 +174,4 @@ private:
 	string _equation;
 	GraphManager* _graphManager;
 };
-
-position triangleSurfaceNormal(position vertice1, position vertice2, position vertice3);
 

@@ -82,7 +82,6 @@ MessageCallback(GLenum source,
 		type, severity, message);
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -103,7 +102,7 @@ void initBackends()
 	window = glfwCreateWindow(1920, 1280, "Graph", WINDOWED, NULL);
 
 	glfwMakeContextCurrent(window);
-	glfwSetKeyCallback(window, key_callback);
+	//glfwSetKeyCallback(window, nullptr);
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSwapInterval(1); // Enable Vsync
@@ -351,27 +350,6 @@ void keyboard() {
 	}*/
 }
 
-//glfw keyboard callback (used for one-press actions)
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	bool* focused = (bool*)getWindowVar(window, "graphFocused");
-	if (action == GLFW_PRESS && focused != nullptr && *focused) {
-		if (key == 'R') {
-			xang = 0;
-			yang = 0;
-			zpos = -40;
-			xpos = 0;
-			ypos = 0;
-		}
-		else if (key == '2') {
-			xang = 0;
-			yang = 0;
-			zpos = -20;
-			xpos = 0;
-			ypos = -20;
-		}
-	}
-}
-
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	double* zoom = (double*)getWindowVar(window, "graphZoom");
@@ -439,7 +417,7 @@ int main(int argc, char const* argv[])
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
-		graphFocused = !console.IsFocused();
+		graphFocused = !(console.IsFocused() || graphManager._focused);
 		//keyboard
 		if(graphFocused)
 			keyboard();
