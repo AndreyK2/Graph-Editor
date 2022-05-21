@@ -98,18 +98,6 @@ struct GraphProperties
 	string _equation;
 };
 
-class GraphEditor
-{
-public:
-	GraphEditor(size_t graphId);
-	void Draw();
-
-	size_t id;
-	GraphProperties _prop;
-
-private:
-	bool _open;
-};
 
 class Graph
 {
@@ -137,6 +125,8 @@ private:
 	double& _x; double& _z;
 };
 
+class GraphEditor;
+
 class GraphManager
 {
 public:
@@ -145,6 +135,7 @@ public:
 
 	size_t NewGraph(string equation = "0");
 	size_t RemoveGraph(size_t graphId);
+	void UpdateEquation(size_t graphId, string equation);
 	void generateIndecies();
 	void Draw();
 private:
@@ -161,6 +152,23 @@ private:
 	GLuint* _indexBuff;
 	size_t _curId;
 	GLuint _program;
+};
+
+
+class GraphEditor
+{
+public:
+	GraphEditor(size_t graphId, GraphManager* graphManager, string equation = "");
+	void Draw();
+	int TextEditCallback(ImGuiInputTextCallbackData* data);
+
+	size_t id;
+	GraphProperties _prop;
+
+private:
+	bool _open;
+	string _equation;
+	GraphManager* _graphManager;
 };
 
 position triangleSurfaceNormal(position vertice1, position vertice2, position vertice3);
