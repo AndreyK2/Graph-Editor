@@ -200,7 +200,6 @@ void Console::ExecCommand(string raw)
 			_log.push_back("Invalid usage, try: graph [equation]");
 			return;
 		}
-		
 		try
 		{
 			size_t id = _graphManager->NewGraph(args[0]);

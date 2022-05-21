@@ -1,5 +1,6 @@
 #include "Graph.h"
 #include <stack>
+#include "misc/cpp/imgui_stdlib.h"
 
 #define GRAPH_SIDES 2
 #define INDEX_REPEATS 2
@@ -548,7 +549,7 @@ size_t GraphManager::NewGraph(string equation)
 	_graphs.back().Generate(sampleSize, _sampleCount, _resolution);
 
 	// Create new editor window
-	GraphEditor e(_curId);
+	GraphEditor e(_curId, this, equation);
 	_graphEditors.push_back(e);
 
 	return _curId;
@@ -579,6 +580,20 @@ size_t GraphManager::RemoveGraph(size_t graphId)
 	}
 
 	return result;
+}
+
+void GraphManager::UpdateEquation(size_t graphId, string equation)
+{
+	EquationNode* eqHead = GenerateEquationTree(equation, _vars);
+	_DeleteEquation(graphId); 
+	for (vector<Graph>::iterator it = _graphs.begin(); it != _graphs.end(); ++it)
+	{
+		if (it->id == graphId)
+		{
+			it->SetEquation(eqHead);
+			it->Generate(exp(_curGraphZoom), _sampleCount, _resolution);
+		}
+	}
 }
 
 /*
@@ -624,7 +639,8 @@ void GraphManager::generateIndecies()
 	}
 }
 
-GraphEditor::GraphEditor(size_t graphId) : id(graphId)
+GraphEditor::GraphEditor(size_t graphId, GraphManager* graphManager, string equation) : \
+	id(graphId), _graphManager(graphManager), _equation(equation)
 {
 	_prop._equation = "";
 	_prop._gradingIntensity = 1;
@@ -698,5 +714,23 @@ void GraphEditor::Draw()
 		ImGui::EndPopup();
 	}
 
+	ImGui::TextWrapped("Function");
+	ImGui::SameLine();
+
+	auto callbackForwarder = [](ImGuiInputTextCallbackData* data) {GraphEditor* ge = (GraphEditor*)data->UserData; return ge->TextEditCallback(data); };
+	if (ImGui::InputText("", &_equation, NULL, (ImGuiInputTextCallback)callbackForwarder, (void*)this))
+	{
+		try
+		{
+			_graphManager->UpdateEquation(id, _equation);
+		}
+		catch(EquationError err){} // TODO: indicate that the equation is invalid, maybe with a red outline
+	}
+
 	ImGui::End();
+}
+
+int GraphEditor::TextEditCallback(ImGuiInputTextCallbackData* data)
+{
+	return 0;
 }
