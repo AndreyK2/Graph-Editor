@@ -465,6 +465,8 @@ GraphManager::GraphManager(GLuint program, vector<pair<string, void*>>* windowVa
 	_indexBuff = nullptr;
 	_curGraphZoom = 1;
 
+	_focused = false;
+
 	if (windowVars == nullptr) return;
 	for (auto var : *windowVars)
 	{
@@ -489,6 +491,7 @@ GraphManager::~GraphManager()
 
 void GraphManager::Draw()
 {
+	_focused = false;
 	for (GraphEditor& e : _graphEditors)
 	{
 		e.Draw();
@@ -648,6 +651,7 @@ GraphEditor::GraphEditor(size_t graphId, GraphManager* graphManager, string equa
 	_prop._outlineColorX = ImVec4(0.8f, 0.8f, 1.0f, 1.0f);
 	_prop._outlineColorZ = ImVec4(1.0f, 0.8f, 0.8f, 1.0f);
 	_open = true;
+	
 }
 
 void GraphEditor::Draw()
@@ -725,6 +729,11 @@ void GraphEditor::Draw()
 			_graphManager->UpdateEquation(id, _equation);
 		}
 		catch(EquationError err){} // TODO: indicate that the equation is invalid, maybe with a red outline
+	}
+
+	if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+	{
+		_graphManager->_focused = true;
 	}
 
 	ImGui::End();
