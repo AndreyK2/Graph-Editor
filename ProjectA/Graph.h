@@ -5,55 +5,41 @@
 #include <stdexcept>
 #include <vector>
 #include <utility>
-#include <glew.h>
+#include <algorithm>
+#include <memory>
 
+#include <glew.h>
 #include <imgui.h>
 
 #define NO_ERR 0
 #define NOT_FOUND 1
-#define HIDE 999999
 
-using std::string; using std::vector; using std::pair;
+using std::string; 
+using std::vector; 
+using std::pair;
+using std::unique_ptr;
 
-//a point in 3d space (used on 2d & 3d graphs)
-// TODO: Rename to vec3?
 struct position {
-	GLfloat x;
-	GLfloat y;
-	GLfloat z;
+	GLfloat x, y, z;
 };
 
-/*
-Graph equations are parsed as binary trees composed of EquationNodes 
-*/
-class EquationNode
+struct EquationNode
 {
-public:
-	EquationNode(EquationNode* left = nullptr, EquationNode* right = nullptr);
-	~EquationNode();
-	double Evaluate() { return _evalFunc(this); };
-	void SetEvaluationFunc(std::function<double(EquationNode* curNode)> func) { _evalFunc = func; };
-	void setLeft(EquationNode* left) { _left = left; };
-	void setRight(EquationNode* right) { _right = right; };
-	EquationNode* left() { return _left; };
-	EquationNode* right() { return _right; };
-
-private:
-	EquationNode* _left;
-	EquationNode* _right;
-
+	unique_ptr<EquationNode> _left;
+	unique_ptr<EquationNode> _right;
 	std::function<double(EquationNode* curNode)> _evalFunc;
+
+	double Evaluate() { return _evalFunc(this); };
 };
 
 
-EquationNode* GenerateEquationTree(string equation, vector<pair<char,double>>& vars, size_t substrIndex = 0); // TODO: static in EquationNode class?
+unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,double>>& vars, size_t substrIndex = 0); // TODO: static in EquationNode?
+
 size_t unmatchedBracket(string equation);
 void LRstripWhites(string& str);
 size_t findOperator(string str, string operators, bool reverse = false);
 char upper(char c);
 pair<int, size_t> getFunction(string equation);
-
-
 
 // TODO: move func and func names to a structure?
 enum mathFunctions
@@ -98,24 +84,25 @@ struct GraphProperties
 	string _equation;
 };
 
-
 class Graph
 {
 public:
-	Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation);
+	Graph(size_t id, GLuint program, double& x, double& z, unique_ptr<EquationNode> graphEquation);
 
 	void Generate(double sampleSize, size_t samples, size_t resolution);
 	void Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, GraphProperties properties);
-
-	void SetEquation(EquationNode* graphEquation);
+	void SetEquation(unique_ptr<EquationNode> graphEquation);
 
 	bool show;
 	const size_t id;
 
+	constexpr static size_t graph_sides = 2, duplicate_rowindecies = 2,
+		non_repeating_index_rows = 2, index_repeats = 2;
+
 private:
 	void bindVertexBuffer(GLuint& GLbuffer, position* vertexBuffer, size_t size);
 
-	EquationNode* _graphEquation;
+	unique_ptr<EquationNode> _graphEquation;
 	GLuint _bufferHorizontalOutlineXupper;
 	GLuint _bufferHorizontalOutlineXlower;
 	GLuint _bufferHorizontalOutlineZupper;
@@ -131,7 +118,6 @@ class GraphManager
 {
 public:
 	GraphManager(GLuint program, vector<pair<string, void*>>* windowVars = nullptr);
-	~GraphManager();
 
 	size_t NewGraph(string equation = "0");
 	size_t RemoveGraph(size_t graphId);
@@ -142,10 +128,7 @@ public:
 	bool _focused;
 
 private:
-	void _DeleteEquation(size_t graphId);
-
 	vector<Graph> _graphs;
-	vector<pair<size_t, EquationNode*>> _graphEquations;
 	vector<GraphEditor> _graphEditors;
 	vector<pair<char, double>> _vars; // x,z,...
 	size_t _sampleCount;

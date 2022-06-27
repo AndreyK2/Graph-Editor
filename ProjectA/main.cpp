@@ -19,12 +19,7 @@
 using std::vector;
 using std::string;
 
-#define WINDOWED NULL
-#define PI 3.141
-
 GLFWwindow* window;
-
-// setup -----------------------------------------------------------
 
 //init gl vars: buffers
 GLuint vertex_array_object;
@@ -54,11 +49,9 @@ float ypos = 0;
 float zpos = -40;
 float xang = 0;
 float yang = 0;
-double fov = 90;
+float fov = 90;
 
-//axis
-struct position axis[6];
-struct position axis_marks[600];
+
 
 //Callbacks
 
@@ -67,7 +60,7 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-void GLAPIENTRY // TODO: this is only supported in gl 4? also what is 8251
+void GLAPIENTRY 
 MessageCallback(GLenum source,
 	GLenum type,
 	GLuint id,
@@ -85,7 +78,7 @@ MessageCallback(GLenum source,
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
-void perspective(double fov);
+void perspective(float fov);
 
 void* getWindowVar(GLFWwindow* window, string varName);
 
@@ -99,7 +92,7 @@ void initBackends()
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	window = glfwCreateWindow(1920, 1280, "Graph", WINDOWED, NULL);
+	window = glfwCreateWindow(1920, 1280, "Graph", NULL, NULL);
 
 	glfwMakeContextCurrent(window);
 	//glfwSetKeyCallback(window, nullptr);
@@ -168,27 +161,20 @@ void initGraphEnvironment() {
 	//setup perspective
 	perspective(fov);
 
+	const size_t count_sides = 6;
+	const size_t count_marks = 100;
+	position axis[count_sides] = {0};
+	position axis_marks[count_sides * count_marks] = {0};
+
 	//axis lines, per side
 	//x
 	axis[0].x = -graph_size;
-	axis[0].y = 0;
-	axis[0].z = 0;
 	axis[1].x = graph_size;
-	axis[1].y = 0;
-	axis[1].z = 0;
 	//y
-	axis[2].x = 0;
 	axis[2].y = -graph_size;
-	axis[2].z = 0;
-	axis[3].x = 0;
 	axis[3].y = graph_size;
-	axis[3].z = 0;
 	//z
-	axis[4].x = 0;
-	axis[4].y = 0;
 	axis[4].z = graph_size;
-	axis[5].x = 0;
-	axis[5].y = 0;
 	axis[5].z = -graph_size;
 
 	//buffer for axis
@@ -198,40 +184,31 @@ void initGraphEnvironment() {
 	glBufferData(GL_ARRAY_BUFFER, sizeof(axis), axis, GL_STATIC_DRAW);
 
 	//axis marks
-	int i;
-	int index = 0;
+	size_t index = 0;
 	//x
-	for (i = -graph_size; i < graph_size; ++i) {
+	for (int i = -graph_size; i < graph_size; ++i) {
 		if (i % 2 != 0) continue; //only every 2 points
 		axis_marks[index].x = i;
-		axis_marks[index].y = 0;
-		axis_marks[index].z = 0;
 		index++;
 		axis_marks[index].x = i;
 		axis_marks[index].y = 1;
-		axis_marks[index].z = 0;
 		index++;
 	}
 	//y
-	for (i = -graph_size; i < graph_size; ++i) {
+	
+	for (int i = -graph_size; i < graph_size; ++i) {
 		if (i % 2 != 0) continue;
-		axis_marks[index].x = 0;
 		axis_marks[index].y = i;
-		axis_marks[index].z = 0;
 		index++;
 		axis_marks[index].x = 1;
 		axis_marks[index].y = i;
-		axis_marks[index].z = 0;
 		index++;
 	}
 	//z
-	for (i = -graph_size; i < graph_size; ++i) {
+	for (int i = -graph_size; i < graph_size; ++i) {
 		if (i % 2 != 0) continue;
-		axis_marks[index].x = 0;
-		axis_marks[index].y = 0;
 		axis_marks[index].z = i;
 		index++;
-		axis_marks[index].x = 0;
 		axis_marks[index].y = 1;
 		axis_marks[index].z = i;
 		index++;
@@ -244,25 +221,25 @@ void initGraphEnvironment() {
 	glBufferData(GL_ARRAY_BUFFER, sizeof(axis_marks), axis_marks, GL_STATIC_DRAW);
 }
 
-void perspective(double fov)
+void perspective(float fov)
 {
 	//setup perspective
-	float fzNear = 1.0f;
-	float fzFar = 100.0f;
-	//THE MATRIX
-	float theMatrix[16];
-	memset(theMatrix, 0, sizeof(float) * 16);
-	//build perspective matrix
-	float fFrustumScale = 1 / tan((fov / 2) * (PI / 180));
-	theMatrix[0] = fFrustumScale;
-	theMatrix[5] = fFrustumScale;
-	theMatrix[10] = (fzFar + fzNear) / (fzNear - fzFar);
-	theMatrix[14] = (2 * fzFar * fzNear) / (fzNear - fzFar);
-	theMatrix[11] = -1.0f;
+	const float fzNear = 1;
+	const float fzFar = 100;
+
+	const float pi = 4 * atan(1);
+	const float fFrustumScale = 1 / tan((fov / 2) * (pi / 180));
+
+	float perspectiveMatrix[16] = {
+		fFrustumScale,	0,	0,	0,
+		0,	fFrustumScale,  0,	0,
+		0,	0,	(fzFar + fzNear) / (fzNear - fzFar),  -1,
+		0,	0,	(2 * fzFar * fzNear) / (fzNear - fzFar),  0
+	};
 
 	//bind data to shader
 	glUseProgram(program);
-	glUniformMatrix4fv(uniform_perspective, 1, GL_TRUE, theMatrix); //perspective matrix
+	glUniformMatrix4fv(uniform_perspective, 1, GL_TRUE, perspectiveMatrix); //perspective matrix
 	glUniform3f(uniform_offset, xpos, ypos, zpos); //position offset
 	glUniform2f(uniform_angle, xang, yang); //rotation angles
 	glUniform4f(uniform_color, 1, 1, 1, 1); //color
@@ -280,9 +257,9 @@ void draw(GraphManager& gm) {
 	glUniform3f(uniform_offset, xpos, ypos, zpos);
 	glUniform2f(uniform_angle, xang, yang);
 
-	//color for axis (green)
+	//color for axis
 	glUniform4f(uniform_color, 0.3f, 0.4f, 0.7f, 1.0f);
-	//draw axis
+	//draw each axis
 	glBindBuffer(GL_ARRAY_BUFFER, buffer_axis);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);

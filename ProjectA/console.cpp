@@ -138,6 +138,7 @@ void Console::ExecCommand(string raw)
 			cmd = command;
 			raw.erase(0, cmd.size() + 1);
 			found = true;
+			break;
 		}
 	}
 
@@ -254,10 +255,6 @@ void Console::ExecCommand(string raw)
 
 		size_t id = stoi(args[0]);
 		size_t result = _graphManager->RemoveGraph(id);
-		if (result == NOT_FOUND)
-		{
-			_log.push_back("[error] Could not find graph with id " + args[0]);
-		}
 	}
 	else
 	{

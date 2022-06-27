@@ -2,28 +2,9 @@
 #include <stack>
 #include "misc/cpp/imgui_stdlib.h"
 
-#define GRAPH_SIDES 2
-#define INDEX_REPEATS 2
-#define NON_REPEATING_INDEX_ROWS 2
-#define DUPLICATE_INDECIES 2
-#define VERTEX_DIMENSIONS 3
-#define TRIANGLE_VERTICES 3
-
-EquationNode::EquationNode(EquationNode* left, EquationNode* right)
-	: _left(left), _right(right)
+unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char, double>>& vars, size_t substrIndex)
 {
-	_evalFunc = [](EquationNode * curNode) { return 0.0; };
-}
-
-EquationNode::~EquationNode()
-{
-	delete _left;
-	delete _right;
-}
-
-EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& vars, size_t substrIndex)
-{
-	EquationNode* node = nullptr;
+	unique_ptr<EquationNode> node(new EquationNode);
 	size_t pos;
 
 	// equation pre-processing
@@ -53,41 +34,38 @@ EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& 
 	// -- 
 	// Beginning of operator checks
 
-	// Subtraction, division and power care about order! thus we sometimes find in reverse
+	// Subtraction, division and power care about order, thus we sometimes find in reverse
 
 	pos = findOperator(equation, "+-", true);
 	if (pos != equation.npos) 
 	{
-		node = new EquationNode;
-		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
-		node->setRight(GenerateEquationTree(equation.substr(pos+1, equation.npos), vars, substrIndex + pos + 1));
+		node->_left = (GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
+		node->_right = (GenerateEquationTree(equation.substr(pos+1, equation.npos), vars, substrIndex + pos + 1));
 		if(equation[pos] == '+')
-			node->SetEvaluationFunc([](EquationNode * curNode) {return curNode->left()->Evaluate() + curNode->right()->Evaluate(); });
+			node->_evalFunc = [](EquationNode * curNode) {return curNode->_left->Evaluate() + curNode->_right->Evaluate(); };
 		else
-			node->SetEvaluationFunc([](EquationNode * curNode) {return curNode->left()->Evaluate() - curNode->right()->Evaluate(); });
+			node->_evalFunc = [](EquationNode * curNode) {return curNode->_left->Evaluate() - curNode->_right->Evaluate(); };
 		return node;
 	}
 
 	pos = findOperator(equation, "*/", true);
 	if (pos != equation.npos)
 	{
-		node = new EquationNode;
-		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
-		node->setRight(GenerateEquationTree(equation.substr(pos + 1, equation.npos), vars, substrIndex + pos + 1));
+		node->_left = (GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
+		node->_right = (GenerateEquationTree(equation.substr(pos + 1, equation.npos), vars, substrIndex + pos + 1));
 		if(equation[pos] == '*')
-			node->SetEvaluationFunc([](EquationNode * curNode) {return curNode->left()->Evaluate() * curNode->right()->Evaluate(); });
+			node->_evalFunc = [](EquationNode* curNode) {return curNode->_left->Evaluate() * curNode->_right->Evaluate(); };
 		else
-			node->SetEvaluationFunc([](EquationNode * curNode) {return curNode->left()->Evaluate() / curNode->right()->Evaluate(); });
+			node->_evalFunc = [](EquationNode* curNode) {return curNode->_left->Evaluate() / curNode->_right->Evaluate(); };
 		return node;
 	}
 
-	pos = findOperator(equation, "^", false);
+	pos = findOperator(equation, "^");
 	if (pos != equation.npos)
 	{
-		node = new EquationNode;
-		node->setLeft(GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
-		node->setRight(GenerateEquationTree(equation.substr(pos + 1, equation.npos), vars, substrIndex + pos + 1));
-		node->SetEvaluationFunc([](EquationNode * curNode) {return pow(curNode->left()->Evaluate(),curNode->right()->Evaluate()); });
+		node->_left = (GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
+		node->_right = (GenerateEquationTree(equation.substr(pos + 1, equation.npos), vars, substrIndex + pos + 1));
+		node->_evalFunc = [](EquationNode * curNode) {return pow(curNode->_left->Evaluate(),curNode->_right->Evaluate()); };
 		return node;
 	}
 	// TODO: Implement for rest of operations/math functions
@@ -101,49 +79,48 @@ EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& 
 	pos = mathFunction.second;
 	if (pos != equation.npos)
 	{
-		node = new EquationNode;
-		node->setLeft(GenerateEquationTree(equation.substr(pos, equation.npos), vars, substrIndex + pos));
+		node->_left = GenerateEquationTree(equation.substr(pos, equation.npos), vars, substrIndex + pos);
 
 		std::function<double(EquationNode * curNode)> evalFunc;
 		switch (type)
 		{
 		case COSINE:
 		{
-			evalFunc = [](EquationNode * curNode) {return cos(curNode->left()->Evaluate()); };
+			evalFunc = [](EquationNode * curNode) {return cos(curNode->_left->Evaluate()); };
 			break;
 		}
 		case SINE:
 		{
-			evalFunc = [](EquationNode * curNode) {return sin(curNode->left()->Evaluate()); };
+			evalFunc = [](EquationNode * curNode) {return sin(curNode->_left->Evaluate()); };
 			break;
 		}
 		case TANGENT:
 		{
-			evalFunc = [](EquationNode * curNode) {return tan(curNode->left()->Evaluate()); };
+			evalFunc = [](EquationNode * curNode) {return tan(curNode->_left->Evaluate()); };
 			break;
 		}
 		case ACOSINE:
 		{
-			evalFunc = [](EquationNode * curNode) {return acos(curNode->left()->Evaluate()); };
+			evalFunc = [](EquationNode * curNode) {return acos(curNode->_left->Evaluate()); };
 			break;
 		}
 		case ASINE:
 		{
-			evalFunc = [](EquationNode * curNode) {return asin(curNode->left()->Evaluate()); };
+			evalFunc = [](EquationNode * curNode) {return asin(curNode->_left->Evaluate()); };
 			break;
 		}
 		case ATANGENT:
 		{
-			evalFunc = [](EquationNode * curNode) {return atan(curNode->left()->Evaluate()); };
+			evalFunc = [](EquationNode * curNode) {return atan(curNode->_left->Evaluate()); };
 			break;
 		}
 		case LOG:
 		{
-			evalFunc = [](EquationNode * curNode) {return log(curNode->left()->Evaluate()); };
+			evalFunc = [](EquationNode * curNode) {return log(curNode->_left->Evaluate()); };
 			break;
 		}
 		}
-		node->SetEvaluationFunc(evalFunc);
+		node->_evalFunc = evalFunc;
 		return node;
 	}
 
@@ -157,9 +134,8 @@ EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& 
 	{
 		if (equation.length() == 1 && upper(equation[0]) == upper(var.first)) 
 		{
-			node = new EquationNode;
 			double& var_ref = var.second;
-			node->SetEvaluationFunc([&var_ref](EquationNode * curNode) { return var_ref; });
+			node->_evalFunc = [&var_ref](EquationNode * curNode) { return var_ref; };
 			return node;
 		}
 	}
@@ -185,8 +161,7 @@ EquationNode* GenerateEquationTree(string equation, vector<pair<char, double>>& 
 		throw EquationError("Found invalid parameter, parameter must be a single number/existing variable name", substrIndex);
 	}
 	
-	node = new EquationNode;
-	node->SetEvaluationFunc([value](EquationNode * curNode) { return value; });
+	node->_evalFunc = [value](EquationNode * curNode) { return value; };
 	return node;
 }
 
@@ -295,20 +270,22 @@ pair<int, size_t> getFunction(string equation)
 // ------ Graph Section ------
 //
 
-Graph::Graph(size_t id, GLuint program, double& x, double& z, EquationNode* graphEquation = nullptr) : id(id), _program(program),
-	_x(x), _z(z), _graphEquation(graphEquation)
+Graph::Graph(size_t id, GLuint program, double& x, double& z, unique_ptr<EquationNode> graphEquation = nullptr) : id(id), _program(program),
+	_x(x), _z(z)
 {
 	show = true;
 	_bufferHorizontalOutlineZupper = NULL; _bufferHorizontalOutlineXupper = NULL; _bufferGraphSurface = NULL;
 	_bufferHorizontalOutlineZlower = NULL; _bufferHorizontalOutlineXlower = NULL;
+	_graphEquation = std::move(graphEquation);
 }
+
 
 /*
 Generates and binds the vertices of the graph surface and graph outlines
 */
 void Graph::Generate(double sampleSize, size_t sampleCount, size_t resolution)
 {
-	unsigned int estimatedPolys3D = pow(sampleCount * resolution * GRAPH_SIDES, 2);
+	unsigned int estimatedPolys3D = pow(sampleCount * resolution * graph_sides, 2);
 	
 	size_t bufferSize = estimatedPolys3D * sizeof(position);
 	
@@ -398,17 +375,18 @@ Draws the graph surface and outlines
 void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, GraphProperties properties)
 {
 	GLuint uniform_color = glGetUniformLocation(_program, "color");
-	size_t const vertexCount = sampleCount * resolution * GRAPH_SIDES;
+	size_t const vertexCount = sampleCount * resolution * graph_sides;
+	size_t const vertexDimensions = 3;
 
 	// Enable color grading for the graph
 	GLuint uniform_isGradient = glGetUniformLocation(_program, "isGradient");
 	glUniform1i(uniform_isGradient, true);
 
-	size_t triangleVertexCount = (pow(vertexCount + DUPLICATE_INDECIES, GRAPH_SIDES) * INDEX_REPEATS) - NON_REPEATING_INDEX_ROWS * vertexCount;
+	size_t triangleVertexCount = (pow(vertexCount + duplicate_rowindecies, graph_sides) * index_repeats) - non_repeating_index_rows * vertexCount;
 	glUniform4f(uniform_color, properties._sufColor.x, properties._sufColor.y, properties._sufColor.z, properties._sufColor.w);
 	glBindBuffer(GL_ARRAY_BUFFER, _bufferGraphSurface);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, VERTEX_DIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer(0, vertexDimensions, GL_FLOAT, GL_FALSE, 0, 0);
 	glDrawElements(GL_TRIANGLE_STRIP, triangleVertexCount, GL_UNSIGNED_INT, (void*)indexBuffer);
 	glDisableVertexAttribArray(0);
 
@@ -424,7 +402,7 @@ void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, Gra
 
 		glBindBuffer(GL_ARRAY_BUFFER, outlineBuffers[i]);
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, VERTEX_DIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
+		glVertexAttribPointer(0, vertexDimensions, GL_FLOAT, GL_FALSE, 0, 0);
 		for (int j = 0; j < vertexCount; j++) {
 			glDrawArrays(GL_LINE_STRIP, j * vertexCount, vertexCount);
 		}
@@ -435,9 +413,9 @@ void Graph::Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, Gra
 	glUniform1i(uniform_isGradient, false);
 }
 
-void Graph::SetEquation(EquationNode* graphEquation)
+void Graph::SetEquation(unique_ptr<EquationNode> graphEquation)
 {
-	_graphEquation = graphEquation;
+	_graphEquation = std::move(graphEquation);
 }
 
 void Graph::bindVertexBuffer(GLuint& GLbuffer, position* vertexBuffer, size_t size)
@@ -480,15 +458,6 @@ GraphManager::GraphManager(GLuint program, vector<pair<string, void*>>* windowVa
 	generateIndecies();
 }
 
-GraphManager::~GraphManager()
-{
-	// Free equation memory
-	for (pair<size_t, EquationNode*> equation : _graphEquations)
-	{
-		delete equation.second;
-	}
-}
-
 void GraphManager::Draw()
 {
 	_focused = false;
@@ -520,23 +489,9 @@ void GraphManager::Draw()
 	}
 }
 
-void GraphManager::_DeleteEquation(size_t graphId)
-{
-	for (vector<pair<size_t, EquationNode*>>::iterator eq = _graphEquations.begin(); eq != _graphEquations.end(); ++eq)
-	{
-		if (eq->first == graphId)
-		{
-			delete eq->second;
-			_graphEquations.erase(eq);
-			return;
-		}
-	}
-}
-
 size_t GraphManager::NewGraph(string equation)
 {
-	EquationNode* eqHead = GenerateEquationTree(equation, _vars);
-	_graphEquations.push_back({ ++_curId, eqHead });
+	unique_ptr<EquationNode> eqHead = GenerateEquationTree(equation, _vars);
 
 	size_t pos_x; size_t pos_z;
 	for (size_t i = 0; i < _vars.size(); i++)
@@ -545,7 +500,7 @@ size_t GraphManager::NewGraph(string equation)
 		else if (_vars[i].first == 'z') pos_z = i;
 	}
 
-	_graphs.push_back({ _curId, _program, _vars[pos_x].second, _vars[pos_z].second, eqHead });
+	_graphs.push_back({ ++_curId, _program, _vars[pos_x].second, _vars[pos_z].second, std::move(eqHead) });
 	
 	double sampleSize = 1;
 	if (_graphZoom != nullptr) sampleSize = exp(*_graphZoom);
@@ -560,40 +515,23 @@ size_t GraphManager::NewGraph(string equation)
 
 size_t GraphManager::RemoveGraph(size_t graphId)
 {
-	size_t result = NOT_FOUND;
+	auto pos = std::find_if(_graphEditors.begin(), _graphEditors.end(), [graphId](GraphEditor& e) { return e.id == graphId; });
+	if (pos != _graphEditors.end()) _graphEditors.erase(pos);
+	// TODO: figure out the copy constructor
+	auto g = std::find_if(_graphs.begin(), _graphs.end(), [graphId](Graph& g) { return g.id == graphId; });
+	g->show = false; 
 
-	for (vector<Graph>::iterator it = _graphs.begin(); it != _graphs.end(); ++it)
-	{
-		if (it->id == graphId)
-		{
-			it->show = false;
-			_DeleteEquation(graphId);
-			result = NO_ERR;
-		}
-
-	}
-
-	for (vector<GraphEditor>::iterator it = _graphEditors.begin(); it != _graphEditors.end(); ++it)
-	{
-		if (it->id == graphId)
-		{
-			_graphEditors.erase(it);
-			break;
-		}
-	}
-
-	return result;
+	return 0;
 }
 
 void GraphManager::UpdateEquation(size_t graphId, string equation)
 {
-	EquationNode* eqHead = GenerateEquationTree(equation, _vars);
-	_DeleteEquation(graphId); 
+	unique_ptr<EquationNode> eqHead = GenerateEquationTree(equation, _vars);
 	for (vector<Graph>::iterator it = _graphs.begin(); it != _graphs.end(); ++it)
 	{
 		if (it->id == graphId)
 		{
-			it->SetEquation(eqHead);
+			it->SetEquation(std::move(eqHead));
 			it->Generate(exp(_curGraphZoom), _sampleCount, _resolution);
 		}
 	}
@@ -612,8 +550,8 @@ void GraphManager::generateIndecies()
 
 	delete _indexBuff;
 
-	GLuint graphWidth = _sampleCount * _resolution * GRAPH_SIDES;
-	GLuint estimatedIndecies = pow((graphWidth) + DUPLICATE_INDECIES, 2) * INDEX_REPEATS;
+	GLuint graphWidth = _sampleCount * _resolution * Graph::graph_sides;
+	GLuint estimatedIndecies = pow((graphWidth) + Graph::duplicate_rowindecies, 2) * Graph::index_repeats;
 	_indexBuff = (GLuint*)malloc(estimatedIndecies * sizeof(GLuint));
 
 	//Index buffer for triangle elements
