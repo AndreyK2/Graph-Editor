@@ -35,6 +35,7 @@ struct EquationNode
 
 unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,double>>& vars, size_t substrIndex = 0); // TODO: static in EquationNode?
 
+bool isBracketPacked(string str);
 size_t unmatchedBracket(string equation);
 void LRstripWhites(string& str);
 size_t findOperator(string str, string operators, bool reverse = false);

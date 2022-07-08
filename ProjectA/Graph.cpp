@@ -22,12 +22,12 @@ unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,
 	substrIndex += pos;
 	LRstripWhites(equation);
 
-	// Unpack
-	if (equation[0] == '(' && equation[equation.length() - 1] == ')')
+	// Unpack brackets
+	if (isBracketPacked(equation))
 	{
 		equation.erase(equation.begin());
 		equation.erase(equation.end()-1);
-		return GenerateEquationTree(equation, vars, substrIndex + 1);
+		substrIndex++;
 	}
 
 	// End of pre-processing
@@ -60,7 +60,7 @@ unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,
 		return node;
 	}
 
-	pos = findOperator(equation, "^");
+ 	pos = findOperator(equation, "^");
 	if (pos != equation.npos)
 	{
 		node->_left = (GenerateEquationTree(equation.substr(0, pos), vars, substrIndex));
@@ -68,7 +68,6 @@ unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,
 		node->_evalFunc = [](EquationNode * curNode) {return pow(curNode->_left->Evaluate(),curNode->_right->Evaluate()); };
 		return node;
 	}
-	// TODO: Implement for rest of operations/math functions
 
 	// End of operator checks
 	// --
@@ -155,7 +154,7 @@ unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,
 		throw EquationError("Parameter value too large", substrIndex);
 	}
 
-	// This covers the case of parameters with no operation between them, for example: "15 23.7" (stod succeeds here)
+	// This covers the case of parameters with no operation between them, for example: "15 23.7" (stod() succeeds here)
 	if (num_end < equation.length())
 	{
 		throw EquationError("Found invalid parameter, parameter must be a single number/existing variable name", substrIndex);
@@ -163,6 +162,19 @@ unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,
 	
 	node->_evalFunc = [value](EquationNode * curNode) { return value; };
 	return node;
+}
+
+
+bool isBracketPacked(string str)
+{
+	size_t bracketStack = 0;
+	for (char c : str)
+	{
+		if (c == '(') bracketStack++;
+		else if (c == ')') bracketStack--;
+		else if (bracketStack == 0) return false;
+	}
+	return true;
 }
 
 /*
@@ -204,9 +216,8 @@ size_t findOperator(string str, string operators, bool reverse)
 {
 	// TODO: use stack object to support all bracket types?
 	int bracketStack = 0;
-	size_t pos = 0;
 	char curr = 0;
-	bool found = false;
+	if (reverse) std::reverse(str.begin(), str.end());
 
 	for (unsigned int i = 0; i < str.length(); i++)
 	{
@@ -225,16 +236,14 @@ size_t findOperator(string str, string operators, bool reverse)
 			{
 				if (curr == op)
 				{
-					pos = i;
-					found = true;
-					if (!reverse) return pos;
+					if (reverse) return str.length()-1 - i;
+					return i;
 				}
 			}
 		}
 	}
 
-	if (found) return pos;
-	else return str.npos;
+	return str.npos;
 }
 
 char upper(char c)
