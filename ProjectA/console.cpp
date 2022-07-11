@@ -1,5 +1,14 @@
 #include "Console.h"
-#include "misc/cpp/imgui_stdlib.h" // TODO: change all includes to this format?
+#include "misc/cpp/imgui_stdlib.h"
+
+string toUpper(string s)
+{
+	for (char& c : s)
+	{
+		c = upper(c);
+	}
+	return s;
+}
 
 Console::Console(GraphManager* gm) : _graphManager(gm)
 {
@@ -37,7 +46,7 @@ bool Console::IsFocused()
 
 void Console::Draw(bool* p_open)
 {
-	ImGui::SetNextWindowPos(ImVec2(0, 200), ImGuiCond_FirstUseEver); // TODO: Set below top bar
+	ImGui::SetNextWindowPos(ImVec2(0, 200), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(300, 600), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin("Graph Editing Console", p_open))
 	{
@@ -63,11 +72,11 @@ void Console::Draw(bool* p_open)
 	const float footer_height_to_reserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 	ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-	// TODO: if you have thousands of entries this approach may be too inefficient and may require user-side clipping
-	// to only process visible items. The clipper will automatically measure the height of your first item and then
+	// TODO: if you have many entries this approach may be too inefficient and may require user-side clipping
+	// to only process visible items.
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
-	// TODO: copy log?
+
 	for (string entry : _log)
 	{
 		ImVec4 color;
@@ -153,7 +162,7 @@ void Console::ExecCommand(string raw)
 
 	bool validArgs = true;
 	size_t pos_start = 0; size_t pos_end = 0;
-	while (pos_end != raw.npos) // todo
+	while (pos_end != raw.npos) 
 	{
 		pos_start = raw.find_first_not_of(' ', pos_end);
 		if (pos_start == raw.npos) break;
@@ -271,11 +280,4 @@ void Console::IndexedError(string err, string input, size_t index)
 	_log.push_back("[error] " + marker);
 }
 
-string toUpper(string s)
-{
-	for (char& c : s)
-	{
-		c = upper(c);
-	}
-	return s;
-}
+

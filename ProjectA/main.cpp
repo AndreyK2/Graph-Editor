@@ -51,8 +51,6 @@ float xang = 0;
 float yang = 0;
 float fov = 90;
 
-
-
 //Callbacks
 
 static void glfw_error_callback(int error, const char* description)
@@ -230,7 +228,7 @@ void perspective(float fov)
 	const float pi = 4 * atan(1);
 	const float fFrustumScale = 1 / tan((fov / 2) * (pi / 180));
 
-	float perspectiveMatrix[16] = {
+	const float perspectiveMatrix[16] = {
 		fFrustumScale,	0,	0,	0,
 		0,	fFrustumScale,  0,	0,
 		0,	0,	(fzFar + fzNear) / (fzNear - fzFar),  -1,

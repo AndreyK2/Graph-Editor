@@ -2,17 +2,15 @@
 
 #include <functional>
 #include <string>
-#include <stdexcept>
 #include <vector>
 #include <utility>
-#include <algorithm>
+
 #include <memory>
 
 #include <glew.h>
 #include <imgui.h>
 
-#define NO_ERR 0
-#define NOT_FOUND 1
+#include "parsing.h"
 
 using std::string; 
 using std::vector; 
@@ -23,58 +21,6 @@ struct position {
 	GLfloat x, y, z;
 };
 
-struct EquationNode
-{
-	unique_ptr<EquationNode> _left;
-	unique_ptr<EquationNode> _right;
-	std::function<double(EquationNode* curNode)> _evalFunc;
-
-	double Evaluate() { return _evalFunc(this); };
-};
-
-
-unique_ptr<EquationNode> GenerateEquationTree(string equation, vector<pair<char,double>>& vars, size_t substrIndex = 0); // TODO: static in EquationNode?
-
-bool isBracketPacked(string str);
-size_t unmatchedBracket(string equation);
-void LRstripWhites(string& str);
-size_t findOperator(string str, string operators, bool reverse = false);
-char upper(char c);
-pair<int, size_t> getFunction(string equation);
-
-// TODO: move func and func names to a structure?
-enum mathFunctions
-{
-	COSINE = 0, SINE, TANGENT,
-	ACOSINE, ASINE, ATANGENT,
-	LOG,
-	NONE
-};
-
-static vector<vector<string>> funcNames{
-	{"COS", "COSINE"},
-	{"SIN", "SINE"},
-	{"TAN", "TANGENT"},
-	{"ACOS", "ARCCOS", "ACOSINE", "ARCCOSINE"},
-	{"ASIN", "ARCSIN", "ASINE", "ARCSINE"},
-	{"ATAN", "ARCTAN", "ATANGENT", "ARCTANGENT"},
-	{"LOG"}
-};
-
-class EquationError : public std::exception
-{
-public:
-	explicit EquationError(const char* message, size_t index = 0) : _msg(message), _index(index) {};
-	explicit EquationError(const string& message, size_t index = 0) : _msg(message), _index(index) {};
-	virtual ~EquationError() noexcept {};
-
-	virtual const char* what() const noexcept { return _msg.c_str(); };
-	size_t index() const { return _index; };
-
-protected:
-	string _msg;
-	size_t _index;
-};
 
 struct GraphProperties
 {
@@ -89,13 +35,14 @@ class Graph
 {
 public:
 	Graph(size_t id, GLuint program, double& x, double& z, unique_ptr<EquationNode> graphEquation);
+	//Graph& operator=(const Graph& other);
 
 	void Generate(double sampleSize, size_t samples, size_t resolution);
 	void Draw(GLuint sampleCount, GLuint resolution, GLuint* indexBuffer, GraphProperties properties);
 	void SetEquation(unique_ptr<EquationNode> graphEquation);
 
 	bool show;
-	const size_t id;
+	size_t id;
 
 	constexpr static size_t graph_sides = 2, duplicate_rowindecies = 2,
 		non_repeating_index_rows = 2, index_repeats = 2;
@@ -110,6 +57,7 @@ private:
 	GLuint _bufferHorizontalOutlineZlower;
 	GLuint _bufferGraphSurface;
 	GLuint _program;
+	// TODO: Shared pointers?
 	double& _x; double& _z;
 };
 
@@ -158,4 +106,6 @@ private:
 	string _equation;
 	GraphManager* _graphManager;
 };
+
+constexpr char upper(char c);
 
