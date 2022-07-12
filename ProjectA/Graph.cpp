@@ -219,15 +219,11 @@ void GraphManager::Draw()
 			if(g.show) g.Generate(exp(_curGraphZoom), _sampleCount, _resolution);
 		}
 	}
-	// TODO: Implement ordered layering?
+	
 	for (Graph& g : _graphs)
-	{
-		GraphProperties prop;
-		for (GraphEditor& editor : _graphEditors)
-		{
-			if (editor.id == g.id) prop = editor._prop;
-		}
-		if (g.show) g.Draw(_sampleCount, _resolution, _indexBuff, prop);
+	{	
+		auto e = std::find_if(_graphEditors.begin(), _graphEditors.end(), [&g](GraphEditor& e) { return g.id == e.id; });
+		if (g.show) g.Draw(_sampleCount, _resolution, _indexBuff, e->_prop);
 	}
 }
 
@@ -270,14 +266,10 @@ size_t GraphManager::RemoveGraph(size_t graphId)
 void GraphManager::UpdateEquation(size_t graphId, string equation)
 {
 	unique_ptr<EquationNode> eqHead = GenerateEquationTree(equation, _vars);
-	for (vector<Graph>::iterator it = _graphs.begin(); it != _graphs.end(); ++it)
-	{
-		if (it->id == graphId)
-		{
-			it->SetEquation(std::move(eqHead));
-			it->Generate(exp(_curGraphZoom), _sampleCount, _resolution);
-		}
-	}
+	auto graph = std::find_if(_graphs.begin(), _graphs.end(), [graphId](Graph& g) {return g.id == graphId; });
+	graph->SetEquation(std::move(eqHead));
+	graph->Generate(exp(_curGraphZoom), _sampleCount, _resolution);
+
 }
 
 /*

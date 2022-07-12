@@ -1,7 +1,7 @@
 #include "Console.h"
 #include "misc/cpp/imgui_stdlib.h"
 
-string toUpper(string s)
+string upperString(string s)
 {
 	for (char& c : s)
 	{
@@ -15,7 +15,6 @@ Console::Console(GraphManager* gm) : _graphManager(gm)
 	_inputBuff.assign(_inputBuff.size(), 0);
 	_historyPos = -1;
 
-	// "CLASSIFY" is here to provide the test case where "C"+[tab] completes to "CL" and display multiple matches.
 	_commands.push_back("HELP");
 	_commands.push_back("HISTORY");
 	_commands.push_back("CLEAR");
@@ -24,7 +23,6 @@ Console::Console(GraphManager* gm) : _graphManager(gm)
 	_autoScroll = true;
 	_scrollToBottom = false;
 	_focused = false;
-	//AddLog("Welcome to Dear ImGui!");
 }
 
 /*
@@ -138,29 +136,22 @@ void Console::ExecCommand(string raw)
 	// lstrip
 	raw.erase(0, raw.find_first_not_of(' '));
 
-	string cmd = "";
-	bool found = false;
-	for (string command : _commands)
-	{
-		if (toUpper(raw).find(command + " ") == 0 || (toUpper(raw).find(command) == 0 && raw.length() == command.length()))
-		{
-			cmd = command;
-			raw.erase(0, cmd.size() + 1);
-			found = true;
-			break;
-		}
-	}
+	// Find command
+	auto command = std::find_if(_commands.begin(), _commands.end(), [raw](string command) {
+		return upperString(raw).find(command + " ") == 0 || (upperString(raw).find(command) == 0 && raw.length() == command.length()); });
 
-	if (!found)
+	if (command == _commands.end())
 	{
 		_log.push_back("Unrecognized command");
 		return;
 	}
-		
-	// if command matched
-	vector<string> args;
 
-	bool validArgs = true;
+	string cmd = *command;
+	raw.erase(0, cmd.size() + 1);
+
+	// Parse arguments
+	// Not just splitting whitespaces, want to allow args in quats.
+	vector<string> args;
 	size_t pos_start = 0; size_t pos_end = 0;
 	while (pos_end != raw.npos) 
 	{
@@ -172,13 +163,11 @@ void Console::ExecCommand(string raw)
 			pos_end = raw.find_first_of('"', pos_start + 1);
 			if (pos_end == raw.npos)
 			{
-				validArgs = false;
 				IndexedError("Unmatched quatation", raw, pos_start);
 				return;
 			}
 			else if (pos_end < raw.size() - 1 && raw[pos_end+1] != ' ')
 			{
-				validArgs = false;
 				IndexedError("Invalid quatation argument", raw, pos_start);
 				return;
 			}
@@ -235,7 +224,7 @@ void Console::ExecCommand(string raw)
 		else if (cargs == 1)
 		{
 			// todo(?): move command descriptions to type?
-			string cmdName = toUpper(args[0]);
+			string cmdName = upperString(args[0]);
 			if (cmdName == "GRAPH")
 			{
 				_log.push_back("graph [eq]\nGenerates a new 3D graph with equation [eq]");

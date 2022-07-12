@@ -42,7 +42,7 @@ public:
 	void SetEquation(unique_ptr<EquationNode> graphEquation);
 
 	bool show;
-	size_t id;
+	const size_t id;
 
 	constexpr static size_t graph_sides = 2, duplicate_rowindecies = 2,
 		non_repeating_index_rows = 2, index_repeats = 2;
