@@ -22,7 +22,7 @@ void main(){\
   vec4 rotatedPosition = vec4( position.xyz, 1.0f ) * xRMatrix * yRMatrix;\
   vec4 cameraPos = rotatedPosition + vec4(offset.x, offset.y, offset.z, 0.0);\
   gl_Position = perspective * cameraPos;\
-  if (isGradient) theColor = mix(vec4(color.x, color.y, color.z, color.a), vec4(0.0f, 0.0f, 0.0f, color.a), position.y / 100);\
+  if (isGradient) theColor = mix(vec4(color.x, color.y, color.z, color.a), vec4(color.x + (1-color.x)/2, color.y + (1-color.y)/2, color.z + (1-color.z)/2, color.a), abs(position.y) / 100);\
   else theColor = color;\
 }";
 
